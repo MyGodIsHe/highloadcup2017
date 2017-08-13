@@ -1,4 +1,4 @@
 *.json
 src
 *.zip
-/traveler-go
+/traveler
