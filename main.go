@@ -206,7 +206,7 @@ func loadData(fname string) {
 
 
 func main() {
-	go loadData("/tmp/data/data.zip")
+	loadData("/tmp/data/data.zip")
 	router := httprouter.New()
 	router.GET("/users/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		id, err := strconv.Atoi(ps.ByName("id"))
@@ -282,7 +282,7 @@ func main() {
 				return
 			}
 			_, ok := users_emails[*rec.Email]
-			if !ok {
+			if ok {
 				w.WriteHeader(400)
 				return
 			}
@@ -295,7 +295,7 @@ func main() {
 		} else {
 			if rec.Email != nil && *users[id].Email != *rec.Email {
 				_, ok := users_emails[*rec.Email]
-				if !ok {
+				if ok {
 					w.WriteHeader(400)
 					return
 				}
@@ -322,10 +322,7 @@ func main() {
 		var err interface{}
 
 		param := ps.ByName("id")
-		if param == "new" {
-			locations_max_id++
-			id = locations_max_id
-		} else {
+		if param != "new" {
 			id, err = strconv.Atoi(param)
 			if err != nil {
 				w.WriteHeader(404)
@@ -357,6 +354,8 @@ func main() {
 		}
 
 		if param == "new" {
+			locations_max_id++
+			id = locations_max_id
 			rec.Id = id
 			locations[id] = rec
 		} else {
@@ -383,10 +382,7 @@ func main() {
 		var err interface{}
 
 		param := ps.ByName("id")
-		if param == "new" {
-			visits_max_id++
-			id = visits_max_id
-		} else {
+		if param != "new" {
 			id, err = strconv.Atoi(param)
 			if err != nil {
 				w.WriteHeader(404)
@@ -400,9 +396,7 @@ func main() {
 		}
 
 		var rec Visit
-
-		err = json.NewDecoder(r.Body).Decode(&rec)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&rec); err != nil {
 			w.WriteHeader(400)
 			return
 		}
@@ -412,12 +406,14 @@ func main() {
 			w.WriteHeader(400)
 			return
 		}
-		if rec.Mark != nil && *rec.Mark < 0 || *rec.Mark > 5 {
+		if rec.Mark != nil && (*rec.Mark < 0 || *rec.Mark > 5) {
 			w.WriteHeader(400)
 			return
 		}
 
 		if param == "new" {
+			visits_max_id++
+			id = visits_max_id
 			rec.Id = id
 			visits[id] = rec
 		} else {
@@ -508,6 +504,10 @@ gender - учитывать оценки только мужчин или жен
 		if err != nil { w.WriteHeader(400); return }
 
 		gender := r.URL.Query().Get("gender")
+		if gender != "" && gender != "f" && gender != "m" {
+			w.WriteHeader(400)
+			return
+		}
 
 		now := time.Now()
 
