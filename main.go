@@ -21,35 +21,67 @@ import (
 	"net/http"
 	"archive/zip"
 
-	"bytes"
 	"io"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/bearbin/go-age"
 )
 
+func parseId(dict map[string]interface{}) bool {
+	v, ok := dict["id"]
+    if ok && v == nil {
+        return false
+    }
+    return true
+}
+
+func parseString(dict map[string]interface{}, value *string, name string, required bool) bool {
+	v, ok := dict[name]
+    if ok && v == nil {
+        return false
+    }
+    if !ok {
+    	return !required
+    }
+    *value = v.(string)
+    return true
+}
+
+func parseInt(dict map[string]interface{}, value *int, name string, required bool) bool {
+	v, ok := dict[name]
+    if ok && v == nil {
+        return false
+    }
+    if !ok {
+        return !required
+    }
+    *value = int(v.(float64))
+    return true
+}
+
 
 type User struct {
 	Id			int		`json:"id"`
-	Email		*string	`json:"email"`
-	FirstName	*string	`json:"first_name"`
-	LastName	*string	`json:"last_name"`
-	Gender		*string	`json:"gender"`
-	BirthDate	*int64	`json:"birth_date"`
+	Email		string	`json:"email"`
+	FirstName	string	`json:"first_name"`
+	LastName	string	`json:"last_name"`
+	Gender		string	`json:"gender"`
+	BirthDate	int		`json:"birth_date"`
 }
 
-func updateUser(id int, n User) {
-	o := users[id]
-	if n.Email != nil {
-		delete(users_emails, *o.Email)
-		*o.Email = *n.Email
-		users_emails[*o.Email] = true
-	}
-	if n.FirstName != nil { *o.FirstName = *n.FirstName }
-	if n.LastName != nil { *o.LastName = *n.LastName }
-	if n.Gender != nil { *o.Gender = *n.Gender }
-	if n.BirthDate != nil { *o.BirthDate = *n.BirthDate }
-	users[id] = o
+func updateUser(body io.Reader, rec *User, required bool) bool {
+	dict := make(map[string]interface{})
+	if err := json.NewDecoder(body).Decode(&dict); err != nil {
+        return false
+    }
+
+    if required && !parseId(dict) { return false }
+    if !parseString(dict, &rec.Email, "email", required) || len(rec.Email) > 100 { return false }
+    if !parseString(dict, &rec.FirstName, "first_name", required) || len(rec.FirstName) > 50 { return false }
+    if !parseString(dict, &rec.LastName, "last_name", required) || len(rec.LastName) > 50 { return false }
+    if !parseString(dict, &rec.Gender, "gender", required) || (rec.Gender != "f" && rec.Gender != "m") { return false }
+    if !parseInt(dict, &rec.BirthDate, "birth_date", required) || (rec.BirthDate < -1262325600 || rec.BirthDate > 915123600) { return false }
+    return true
 }
 
 type DataUser struct {
@@ -58,19 +90,24 @@ type DataUser struct {
 
 type Location struct {
 	Id			int		`json:"id"`
-	Place		*string	`json:"place"`
-	Country		*string	`json:"country"`
-	City		*string	`json:"city"`
-	Distance	*int	`json:"distance"`
+	Place		string	`json:"place"`
+	Country		string	`json:"country"`
+	City		string	`json:"city"`
+	Distance	int		`json:"distance"`
 }
 
-func updateLocation(id int, n Location) {
-	o := locations[id]
-	if n.Place != nil { *o.Place = *n.Place }
-	if n.Country != nil { *o.Country = *n.Country }
-	if n.City != nil { *o.City = *n.City }
-	if n.Distance != nil { *o.Distance = *n.Distance }
-	locations[id] = o
+func updateLocation(body io.Reader, rec *Location, required bool) bool {
+	dict := make(map[string]interface{})
+	if err := json.NewDecoder(body).Decode(&dict); err != nil {
+        return false
+    }
+
+    if required && !parseId(dict) { return false }
+    if !parseString(dict, &rec.Place, "place", required) { return false }
+    if !parseString(dict, &rec.Country, "country", required) || len(rec.Country) > 50 { return false }
+    if !parseString(dict, &rec.City, "city", required) || len(rec.City) > 50 { return false }
+    if !parseInt(dict, &rec.Distance, "distance", required) { return false }
+    return true
 }
 
 type DataLocation struct {
@@ -78,21 +115,27 @@ type DataLocation struct {
 }
 
 type Visit struct {
-	Id			int		`json:"id"`
-	Location	*int	`json:"location"`
-	User		*int	`json:"user"`
-	VisitedAt	*int	`json:"visited_at"`
-	Mark		*int	`json:"mark"`
+	Id			int	`json:"id"`
+	Location	int	`json:"location"`
+	User		int	`json:"user"`
+	VisitedAt	int	`json:"visited_at"`
+	Mark		int	`json:"mark"`
 }
 
-func updateVisit(id int, n Visit) {
-	o := visits[id]
-	if n.Location != nil { *o.Location = *n.Location }
-	if n.User != nil { *o.User = *n.User }
-	if n.VisitedAt != nil { *o.VisitedAt = *n.VisitedAt }
-	if n.Mark != nil { *o.Mark = *n.Mark }
-	visits[id] = o
+func updateVisit(body io.Reader, rec *Visit, required bool) bool {
+	dict := make(map[string]interface{})
+	if err := json.NewDecoder(body).Decode(&dict); err != nil {
+        return false
+    }
+
+    if required && !parseId(dict) { return false }
+    if !parseInt(dict, &rec.Location, "location", required) { return false }
+    if !parseInt(dict, &rec.User, "user", required) { return false }
+    if !parseInt(dict, &rec.VisitedAt, "visited_at", required) || (rec.VisitedAt < 946659600 || rec.VisitedAt > 1420045200) { return false }
+    if !parseInt(dict, &rec.Mark, "mark", required) || (rec.Mark < 0 || rec.Mark > 5) { return false }
+    return true
 }
+
 
 type DataVisit struct {
 	Visits	[]Visit	`json:"visits"`
@@ -167,7 +210,7 @@ func loadData(fname string) {
 			}
 			for _, rec := range recs.Users {
 				users[rec.Id] = rec
-				users_emails[*rec.Email] = true
+				users_emails[rec.Email] = true
 				if users_max_id < rec.Id {
 					users_max_id = rec.Id
 				}
@@ -224,84 +267,56 @@ func main() {
 	router.POST("/users/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		var id int
 		var err interface{}
+		var rec User
 
 		param := ps.ByName("id")
-
-		var buf bytes.Buffer
-		body := io.TeeReader(r.Body, &buf)
-
-		if param != "new" {
+		is_insert := param == "new"
+		if !is_insert {
 			id, err = strconv.Atoi(param)
 			if err != nil {
 				w.WriteHeader(404)
 				return
 			}
-			_, ok := users[id]
+			var ok bool
+			rec, ok = users[id]
 			if !ok {
 				w.WriteHeader(404)
 				return
 			}
 		}
 
-		var rec User
+		old_email := rec.Email
 
-		err = json.NewDecoder(body).Decode(&rec)
-
-		fmt.Println(r.Method, r.URL.String(), buf.String())
-
-		if err != nil {
+		if !updateUser(r.Body, &rec, is_insert) {
 			w.WriteHeader(400)
 			return
 		}
 
-		// field validations
-		if rec.Email != nil && len(*rec.Email) > 100 {
-			w.WriteHeader(400)
-			return
-		}
-		if rec.FirstName != nil && len(*rec.FirstName) > 50 {
-			w.WriteHeader(400)
-			return
-		}
-		if rec.LastName != nil && len(*rec.LastName) > 50 {
-			w.WriteHeader(400)
-			return
-		}
-		if rec.Gender != nil && *rec.Gender != "f" && *rec.Gender != "m" {
-			w.WriteHeader(400)
-			return
-		}
-		if rec.BirthDate != nil && (*rec.BirthDate < -1262325600 || *rec.BirthDate > 915123600) {
-			w.WriteHeader(400)
-			return
-		}
-
-		if param == "new" {
-			if rec.Email == nil {
-				w.WriteHeader(400)
-				return
-			}
-			_, ok := users_emails[*rec.Email]
+		if is_insert {
+			_, ok := users_emails[rec.Email]
 			if ok {
 				w.WriteHeader(400)
 				return
 			}
 			users_max_id++
 			id = users_max_id
-			users_emails[*rec.Email] = true
+			users_emails[rec.Email] = true
 			// insert
 			rec.Id = id
-			users[id] = rec
 		} else {
-			if rec.Email != nil && *users[id].Email != *rec.Email {
-				_, ok := users_emails[*rec.Email]
+			if old_email != rec.Email {
+				_, ok := users_emails[rec.Email]
 				if ok {
 					w.WriteHeader(400)
 					return
 				}
+
+				delete(users_emails, old_email)
+				users_emails[rec.Email] = true
 			}
-			updateUser(id, rec)
 		}
+		users[id] = rec
+
 		w.Write(OK)
 	})
 	router.GET("/locations/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -320,47 +335,35 @@ func main() {
 	router.POST("/locations/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		var id int
 		var err interface{}
+		var rec Location
 
 		param := ps.ByName("id")
-		if param != "new" {
+		is_insert := param == "new"
+		if !is_insert {
 			id, err = strconv.Atoi(param)
 			if err != nil {
 				w.WriteHeader(404)
 				return
 			}
-			_, ok := locations[id]
+			var ok bool
+			rec, ok = locations[id]
 			if !ok {
 				w.WriteHeader(404)
 				return
 			}
 		}
 
-		var rec Location
-
-		err = json.NewDecoder(r.Body).Decode(&rec)
-		if err != nil {
+		if !updateLocation(r.Body, &rec, is_insert) {
 			w.WriteHeader(400)
 			return
 		}
 
-		// field validations
-		if rec.Country != nil && len(*rec.Country) > 50 {
-			w.WriteHeader(400)
-			return
-		}
-		if rec.City != nil && len(*rec.City) > 50 {
-			w.WriteHeader(400)
-			return
-		}
-
-		if param == "new" {
+		if is_insert {
 			locations_max_id++
 			id = locations_max_id
 			rec.Id = id
-			locations[id] = rec
-		} else {
-			updateLocation(id, rec)
 		}
+		locations[id] = rec
 
 		w.Write(OK)
 	})
@@ -380,45 +383,35 @@ func main() {
 	router.POST("/visits/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		var id int
 		var err interface{}
+		var rec Visit
 
 		param := ps.ByName("id")
-		if param != "new" {
+		is_insert := param == "new"
+		if !is_insert {
 			id, err = strconv.Atoi(param)
 			if err != nil {
 				w.WriteHeader(404)
 				return
 			}
-			_, ok := visits[id]
+			var ok bool
+			rec, ok = visits[id]
 			if !ok {
 				w.WriteHeader(404)
 				return
 			}
 		}
 
-		var rec Visit
-		if err := json.NewDecoder(r.Body).Decode(&rec); err != nil {
+		if !updateVisit(r.Body, &rec, is_insert) {
 			w.WriteHeader(400)
 			return
 		}
 
-		// field validations
-		if rec.VisitedAt != nil && (*rec.VisitedAt < 946659600 || *rec.VisitedAt > 1420045200) {
-			w.WriteHeader(400)
-			return
-		}
-		if rec.Mark != nil && (*rec.Mark < 0 || *rec.Mark > 5) {
-			w.WriteHeader(400)
-			return
-		}
-
-		if param == "new" {
+		if is_insert {
 			visits_max_id++
 			id = visits_max_id
 			rec.Id = id
-			visits[id] = rec
-		} else {
-			updateVisit(id, rec)
 		}
+		visits[id] = rec
 		
 		w.Write(OK)
 	})
@@ -457,13 +450,13 @@ toDistance - возвращать только те места, у которы�
 
 		result := ShortVisits{}
 		for _, v := range visits {
-			l := locations[*v.Location]
-			if *v.User != id { continue }
-			if fromDate != "" && *v.VisitedAt <= fromDateValue { continue }
-			if toDate != "" && *v.VisitedAt >= toDateValue { continue }
-			if country != "" && *l.Country != country { continue }
-			if toDistance != "" && *l.Distance >= toDistanceValue { continue }
-			result = append(result, ShortVisit{Mark: *v.Mark, Place: *l.Place, VisitedAt: *v.VisitedAt})
+			l := locations[v.Location]
+			if v.User != id { continue }
+			if fromDate != "" && v.VisitedAt <= fromDateValue { continue }
+			if toDate != "" && v.VisitedAt >= toDateValue { continue }
+			if country != "" && l.Country != country { continue }
+			if toDistance != "" && l.Distance >= toDistanceValue { continue }
+			result = append(result, ShortVisit{Mark: v.Mark, Place: l.Place, VisitedAt: v.VisitedAt})
 		}
 		sort.Sort(result)
 		json.NewEncoder(w).Encode(DataShortVisit{Visits: result})
@@ -514,16 +507,16 @@ gender - учитывать оценки только мужчин или жен
 		avgCount := 0
 		avgSum := 0
 		for _, v := range visits {
-			if *v.Location != id { continue }
-			if fromDate != "" && *v.VisitedAt <= fromDateValue { continue }
-			if toDate != "" && *v.VisitedAt >= toDateValue { continue }
-			u := users[*v.User]
-			if gender != "" && *u.Gender != gender { continue }
-			age := age.AgeAt(time.Unix(*u.BirthDate, 0), now)
+			if v.Location != id { continue }
+			if fromDate != "" && v.VisitedAt <= fromDateValue { continue }
+			if toDate != "" && v.VisitedAt >= toDateValue { continue }
+			u := users[v.User]
+			if gender != "" && u.Gender != gender { continue }
+			age := age.AgeAt(time.Unix(int64(u.BirthDate), 0), now)
 			if fromAge != "" && age <= fromAgeValue { continue }
 			if toAge != "" && age >= toAgeValue { continue }
 			avgCount++
-			avgSum += *v.Mark
+			avgSum += v.Mark
 		}
 		var avg float64
 		if avgCount != 0 {
