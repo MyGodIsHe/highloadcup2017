@@ -6,6 +6,7 @@ curl -i http://localhost:80/users/2
 curl -i http://localhost:80/users/new -d '{"first_name": "Пётр", "last_name": "Фетатосян", "birth_date": -1720915200, "gender": "m", "id": 10, "email": "wibylcudestiwuk@icloud.com"}'
 
 */
+
 //w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 package main
@@ -20,164 +21,249 @@ import (
 	"log"
 	"net/http"
 	"archive/zip"
-
 	"io"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/bearbin/go-age"
 )
 
-func parseId(dict map[string]interface{}) bool {
+func diff(a, b time.Time) int {
+	if a.Location() != b.Location() {
+		b = b.In(a.Location())
+	}
+	if a.After(b) {
+		a, b = b, a
+	}
+	y1, M1, d1 := a.Date()
+	y2, M2, d2 := b.Date()
+
+	h1, m1, s1 := a.Clock()
+	h2, m2, s2 := b.Clock()
+
+	year := int(y2 - y1)
+	month := int(M2 - M1)
+	day := int(d2 - d1)
+	hour := int(h2 - h1)
+	min := int(m2 - m1)
+	sec := int(s2 - s1)
+
+	// Normalize negative values
+	if sec < 0 {
+		sec += 60
+		min--
+	}
+	if min < 0 {
+		min += 60
+		hour--
+	}
+	if hour < 0 {
+		hour += 24
+		day--
+	}
+	if day < 0 {
+		// days in month:
+		t := time.Date(y1, M1, 32, 0, 0, 0, 0, time.UTC)
+		day += 32 - t.Day()
+		month--
+	}
+	if month < 0 {
+		month += 12
+		year--
+	}
+
+	return year
+}
+
+func parseId(dict map[string]interface{}, value *int, required bool) bool {
+	if !required {
+		return true
+	}
 	v, ok := dict["id"]
-    if ok && v == nil {
-        return false
-    }
-    return true
+	if ok && v == nil {
+		return false
+	}
+	if !ok {
+		return false
+	}
+	*value = int(v.(float64))
+	return true
 }
 
 func parseString(dict map[string]interface{}, value *string, name string, required bool) bool {
 	v, ok := dict[name]
-    if ok && v == nil {
-        return false
-    }
-    if !ok {
-    	return !required
-    }
-    *value = v.(string)
-    return true
+	if ok && v == nil {
+		return false
+	}
+	if !ok {
+		return !required
+	}
+	*value = v.(string)
+	return true
 }
 
 func parseInt(dict map[string]interface{}, value *int, name string, required bool) bool {
 	v, ok := dict[name]
-    if ok && v == nil {
-        return false
-    }
-    if !ok {
-        return !required
-    }
-    *value = int(v.(float64))
-    return true
+	if ok && v == nil {
+		return false
+	}
+	if !ok {
+		return !required
+	}
+	*value = int(v.(float64))
+	return true
 }
 
-
 type User struct {
-	Id			int		`json:"id"`
-	Email		string	`json:"email"`
-	FirstName	string	`json:"first_name"`
-	LastName	string	`json:"last_name"`
-	Gender		string	`json:"gender"`
-	BirthDate	int		`json:"birth_date"`
+	Id        int        `json:"id"`
+	Email     string    `json:"email"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Gender    string    `json:"gender"`
+	BirthDate int        `json:"birth_date"`
 }
 
 func updateUser(body io.Reader, rec *User, required bool) bool {
 	dict := make(map[string]interface{})
 	if err := json.NewDecoder(body).Decode(&dict); err != nil {
-        return false
-    }
+		return false
+	}
 
-    if required && !parseId(dict) { return false }
-    if !parseString(dict, &rec.Email, "email", required) || len(rec.Email) > 100 { return false }
-    if !parseString(dict, &rec.FirstName, "first_name", required) || len(rec.FirstName) > 50 { return false }
-    if !parseString(dict, &rec.LastName, "last_name", required) || len(rec.LastName) > 50 { return false }
-    if !parseString(dict, &rec.Gender, "gender", required) || (rec.Gender != "f" && rec.Gender != "m") { return false }
-    if !parseInt(dict, &rec.BirthDate, "birth_date", required) || (rec.BirthDate < -1262325600 || rec.BirthDate > 915123600) { return false }
-    return true
+	if !parseId(dict, &rec.Id, required) {
+		return false
+	}
+	if !parseString(dict, &rec.Email, "email", required) || len(rec.Email) > 100 {
+		return false
+	}
+	if !parseString(dict, &rec.FirstName, "first_name", required) || len(rec.FirstName) > 50 {
+		return false
+	}
+	if !parseString(dict, &rec.LastName, "last_name", required) || len(rec.LastName) > 50 {
+		return false
+	}
+	if !parseString(dict, &rec.Gender, "gender", required) || (rec.Gender != "f" && rec.Gender != "m") {
+		return false
+	}
+	if !parseInt(dict, &rec.BirthDate, "birth_date", required) || (rec.BirthDate < -1262325600 || rec.BirthDate > 915123600) {
+		return false
+	}
+	return true
 }
 
 type DataUser struct {
-	Users	[]User	`json:"users"`
+	Users []User    `json:"users"`
 }
 
 type Location struct {
-	Id			int		`json:"id"`
-	Place		string	`json:"place"`
-	Country		string	`json:"country"`
-	City		string	`json:"city"`
-	Distance	int		`json:"distance"`
+	Id       int        `json:"id"`
+	Place    string    `json:"place"`
+	Country  string    `json:"country"`
+	City     string    `json:"city"`
+	Distance int        `json:"distance"`
 }
 
 func updateLocation(body io.Reader, rec *Location, required bool) bool {
 	dict := make(map[string]interface{})
 	if err := json.NewDecoder(body).Decode(&dict); err != nil {
-        return false
-    }
+		return false
+	}
 
-    if required && !parseId(dict) { return false }
-    if !parseString(dict, &rec.Place, "place", required) { return false }
-    if !parseString(dict, &rec.Country, "country", required) || len(rec.Country) > 50 { return false }
-    if !parseString(dict, &rec.City, "city", required) || len(rec.City) > 50 { return false }
-    if !parseInt(dict, &rec.Distance, "distance", required) { return false }
-    return true
+	if !parseId(dict, &rec.Id, required) {
+		return false
+	}
+	if !parseString(dict, &rec.Place, "place", required) {
+		return false
+	}
+	if !parseString(dict, &rec.Country, "country", required) || len(rec.Country) > 50 {
+		return false
+	}
+	if !parseString(dict, &rec.City, "city", required) || len(rec.City) > 50 {
+		return false
+	}
+	if !parseInt(dict, &rec.Distance, "distance", required) {
+		return false
+	}
+	return true
 }
 
 type DataLocation struct {
-	Locations	[]Location	`json:"locations"`
+	Locations []Location    `json:"locations"`
 }
 
 type Visit struct {
-	Id			int	`json:"id"`
-	Location	int	`json:"location"`
-	User		int	`json:"user"`
-	VisitedAt	int	`json:"visited_at"`
-	Mark		int	`json:"mark"`
+	Id        int    `json:"id"`
+	Location  int    `json:"location"`
+	User      int    `json:"user"`
+	VisitedAt int    `json:"visited_at"`
+	Mark      int    `json:"mark"`
 }
 
 func updateVisit(body io.Reader, rec *Visit, required bool) bool {
 	dict := make(map[string]interface{})
 	if err := json.NewDecoder(body).Decode(&dict); err != nil {
-        return false
-    }
+		return false
+	}
 
-    if required && !parseId(dict) { return false }
-    if !parseInt(dict, &rec.Location, "location", required) { return false }
-    if !parseInt(dict, &rec.User, "user", required) { return false }
-    if !parseInt(dict, &rec.VisitedAt, "visited_at", required) || (rec.VisitedAt < 946659600 || rec.VisitedAt > 1420045200) { return false }
-    if !parseInt(dict, &rec.Mark, "mark", required) || (rec.Mark < 0 || rec.Mark > 5) { return false }
-    return true
+	if !parseId(dict, &rec.Id, required) {
+		return false
+	}
+	if !parseInt(dict, &rec.Location, "location", required) {
+		return false
+	}
+	if _, ok := locations[rec.Location]; !ok {
+		return false
+	}
+	if !parseInt(dict, &rec.User, "user", required) {
+		return false
+	}
+	if _, ok := users[rec.User]; !ok {
+		return false
+	}
+	if !parseInt(dict, &rec.VisitedAt, "visited_at", required) || (rec.VisitedAt < 946659600 || rec.VisitedAt > 1420045200) {
+		return false
+	}
+	if !parseInt(dict, &rec.Mark, "mark", required) || (rec.Mark < 0 || rec.Mark > 5) {
+		return false
+	}
+	return true
 }
 
-
 type DataVisit struct {
-	Visits	[]Visit	`json:"visits"`
+	Visits []Visit    `json:"visits"`
 }
 
 type ShortVisit struct {
-	Mark		int		`json:"mark"`
-	Place		string	`json:"place"`
-	VisitedAt	int		`json:"visited_at"`
+	Mark      int        `json:"mark"`
+	Place     string    `json:"place"`
+	VisitedAt int        `json:"visited_at"`
 }
 
 type ShortVisits []ShortVisit
+
 func (s ShortVisits) Len() int {
-    return len(s)
+	return len(s)
 }
 func (s ShortVisits) Swap(i, j int) {
-    s[i], s[j] = s[j], s[i]
+	s[i], s[j] = s[j], s[i]
 }
 func (s ShortVisits) Less(i, j int) bool {
-    return s[i].VisitedAt < s[j].VisitedAt
+	return s[i].VisitedAt < s[j].VisitedAt
 }
 
 type DataShortVisit struct {
-	Visits	ShortVisits	`json:"visits"`
+	Visits ShortVisits    `json:"visits"`
 }
 
 type DataAvg struct {
-	Avg		float64	`json:"avg"`
+	Avg float64    `json:"avg"`
 }
 
 var OK = []byte("{}\n")
 
 var users = make(map[int]User)
-var users_max_id = 0
 var users_emails = make(map[string]bool)
 
 var locations = make(map[int]Location)
-var locations_max_id = 0
 
 var visits = make(map[int]Visit)
-var visits_max_id = 0
-
 
 func getIntFromQuery(sv string) (string, int, interface{}) {
 	var v int
@@ -187,7 +273,6 @@ func getIntFromQuery(sv string) (string, int, interface{}) {
 	}
 	return sv, v, err
 }
-
 
 func loadData(fname string) {
 	r, err := zip.OpenReader(fname)
@@ -211,9 +296,6 @@ func loadData(fname string) {
 			for _, rec := range recs.Users {
 				users[rec.Id] = rec
 				users_emails[rec.Email] = true
-				if users_max_id < rec.Id {
-					users_max_id = rec.Id
-				}
 			}
 		}
 		if strings.HasPrefix(f.Name, "locations") {
@@ -224,9 +306,6 @@ func loadData(fname string) {
 			}
 			for _, rec := range recs.Locations {
 				locations[rec.Id] = rec
-				if locations_max_id < rec.Id {
-					locations_max_id = rec.Id
-				}
 			}
 		}
 		if strings.HasPrefix(f.Name, "visits") {
@@ -237,9 +316,6 @@ func loadData(fname string) {
 			}
 			for _, rec := range recs.Visits {
 				visits[rec.Id] = rec
-				if visits_max_id < rec.Id {
-					visits_max_id = rec.Id
-				}
 			}
 		}
 		rc.Close()
@@ -247,10 +323,11 @@ func loadData(fname string) {
 	}
 }
 
-
 func main() {
 	loadData("/tmp/data/data.zip")
+
 	router := httprouter.New()
+
 	router.GET("/users/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		id, err := strconv.Atoi(ps.ByName("id"))
 		if err != nil {
@@ -264,6 +341,7 @@ func main() {
 		}
 		json.NewEncoder(w).Encode(rec)
 	})
+
 	router.POST("/users/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		var id int
 		var err interface{}
@@ -298,11 +376,7 @@ func main() {
 				w.WriteHeader(400)
 				return
 			}
-			users_max_id++
-			id = users_max_id
 			users_emails[rec.Email] = true
-			// insert
-			rec.Id = id
 		} else {
 			if old_email != rec.Email {
 				_, ok := users_emails[rec.Email]
@@ -315,10 +389,12 @@ func main() {
 				users_emails[rec.Email] = true
 			}
 		}
-		users[id] = rec
+
+		users[rec.Id] = rec
 
 		w.Write(OK)
 	})
+
 	router.GET("/locations/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		id, err := strconv.Atoi(ps.ByName("id"))
 		if err != nil {
@@ -332,6 +408,7 @@ func main() {
 		}
 		json.NewEncoder(w).Encode(rec)
 	})
+
 	router.POST("/locations/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		var id int
 		var err interface{}
@@ -358,15 +435,11 @@ func main() {
 			return
 		}
 
-		if is_insert {
-			locations_max_id++
-			id = locations_max_id
-			rec.Id = id
-		}
-		locations[id] = rec
+		locations[rec.Id] = rec
 
 		w.Write(OK)
 	})
+
 	router.GET("/visits/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		id, err := strconv.Atoi(ps.ByName("id"))
 		if err != nil {
@@ -380,6 +453,7 @@ func main() {
 		}
 		json.NewEncoder(w).Encode(rec)
 	})
+
 	router.POST("/visits/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		var id int
 		var err interface{}
@@ -406,22 +480,12 @@ func main() {
 			return
 		}
 
-		if is_insert {
-			visits_max_id++
-			id = visits_max_id
-			rec.Id = id
-		}
-		visits[id] = rec
-		
+		visits[rec.Id] = rec
+
 		w.Write(OK)
 	})
+
 	router.GET("/users/:id/visits", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-/*
-fromDate - посещения с visited_at > fromDate
-toDate - посещения с visited_at < toDate
-country - название страны, в которой находятся интересующие достопримечательности
-toDistance - возвращать только те места, у которых расстояние от города меньше этого параметра
-*/
 		var id int
 		var err interface{}
 
@@ -438,37 +502,70 @@ toDistance - возвращать только те места, у которы�
 		}
 
 		fromDate, fromDateValue, err := getIntFromQuery(r.URL.Query().Get("fromDate"))
-		if err != nil { w.WriteHeader(400); return }
+		if err != nil {
+			w.WriteHeader(400);
+			return
+		}
 
 		toDate, toDateValue, err := getIntFromQuery(r.URL.Query().Get("toDate"))
-		if err != nil { w.WriteHeader(400); return }
+		if err != nil {
+			w.WriteHeader(400);
+			return
+		}
 
 		country := r.URL.Query().Get("country")
+		var l Location
+		/*{
+			is_found := false
+			if country != "" {
+				for _, x := range locations {
+					if x.Country == country {
+						l = x
+						is_found = true
+						break
+					}
+				}
+				if !is_found {
+					w.WriteHeader(404)
+					return
+				}
+			}
+		}*/
 
 		toDistance, toDistanceValue, err := getIntFromQuery(r.URL.Query().Get("toDistance"))
-		if err != nil { w.WriteHeader(400); return }
+		if err != nil {
+			w.WriteHeader(400);
+			return
+		}
 
 		result := ShortVisits{}
 		for _, v := range visits {
-			l := locations[v.Location]
-			if v.User != id { continue }
-			if fromDate != "" && v.VisitedAt <= fromDateValue { continue }
-			if toDate != "" && v.VisitedAt >= toDateValue { continue }
-			if country != "" && l.Country != country { continue }
-			if toDistance != "" && l.Distance >= toDistanceValue { continue }
+			if v.User != id {
+				continue
+			}
+			if fromDate != "" && v.VisitedAt <= fromDateValue {
+				continue
+			}
+			if toDate != "" && v.VisitedAt >= toDateValue {
+				continue
+			}
+			l = locations[v.Location]
+			if country != "" && l.Country != country {
+				continue
+			}
+			//if country == "" {
+			//	l = locations[v.Location]
+			//} else if v.Location != l.Id { continue }
+			if toDistance != "" && l.Distance >= toDistanceValue {
+				continue
+			}
 			result = append(result, ShortVisit{Mark: v.Mark, Place: l.Place, VisitedAt: v.VisitedAt})
 		}
 		sort.Sort(result)
 		json.NewEncoder(w).Encode(DataShortVisit{Visits: result})
 	})
+
 	router.GET("/locations/:id/avg", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-/*
-fromDate - учитывать оценки только с visited_at > fromDate
-toDate - учитывать оценки только с visited_at < toDate
-fromAge - учитывать только путешественников, у которых возраст (считается от текущего timestamp) больше этого параметра
-toAge - как предыдущее, но наоборот
-gender - учитывать оценки только мужчин или женщин
-*/
 		var id int
 		var err interface{}
 
@@ -485,16 +582,28 @@ gender - учитывать оценки только мужчин или жен
 		}
 
 		fromDate, fromDateValue, err := getIntFromQuery(r.URL.Query().Get("fromDate"))
-		if err != nil { w.WriteHeader(400); return }
+		if err != nil {
+			w.WriteHeader(400);
+			return
+		}
 
 		toDate, toDateValue, err := getIntFromQuery(r.URL.Query().Get("toDate"))
-		if err != nil { w.WriteHeader(400); return }
+		if err != nil {
+			w.WriteHeader(400);
+			return
+		}
 
 		fromAge, fromAgeValue, err := getIntFromQuery(r.URL.Query().Get("fromAge"))
-		if err != nil { w.WriteHeader(400); return }
+		if err != nil {
+			w.WriteHeader(400);
+			return
+		}
 
 		toAge, toAgeValue, err := getIntFromQuery(r.URL.Query().Get("toAge"))
-		if err != nil { w.WriteHeader(400); return }
+		if err != nil {
+			w.WriteHeader(400);
+			return
+		}
 
 		gender := r.URL.Query().Get("gender")
 		if gender != "" && gender != "f" && gender != "m" {
@@ -502,29 +611,45 @@ gender - учитывать оценки только мужчин или жен
 			return
 		}
 
-		now := time.Now()
+		now := time.Now().UTC()
 
 		avgCount := 0
 		avgSum := 0
 		for _, v := range visits {
-			if v.Location != id { continue }
-			if fromDate != "" && v.VisitedAt <= fromDateValue { continue }
-			if toDate != "" && v.VisitedAt >= toDateValue { continue }
+			if v.Location != id {
+				continue
+			}
+			if fromDate != "" && v.VisitedAt <= fromDateValue {
+				continue
+			}
+			if toDate != "" && v.VisitedAt >= toDateValue {
+				continue
+			}
 			u := users[v.User]
-			if gender != "" && u.Gender != gender { continue }
-			age := age.AgeAt(time.Unix(int64(u.BirthDate), 0), now)
-			if fromAge != "" && age <= fromAgeValue { continue }
-			if toAge != "" && age >= toAgeValue { continue }
+			if gender != "" && u.Gender != gender {
+				continue
+			}
+			age := diff(time.Unix(int64(u.BirthDate), 0).UTC(), now)
+			if fromAge != "" && age < fromAgeValue {
+				continue
+			}
+			if toAge != "" && age >= toAgeValue {
+				continue
+			}
 			avgCount++
 			avgSum += v.Mark
 		}
 		var avg float64
 		if avgCount != 0 {
-			avg = float64(avgSum)/float64(avgCount)
+			avg = float64(avgSum) / float64(avgCount)
 		}
 		avg, _ = strconv.ParseFloat(fmt.Sprintf("%.5f", avg), 64)
+		//fmt.Println("avg", r.URL.String(), avg, )
 		json.NewEncoder(w).Encode(DataAvg{Avg: avg})
 	})
+
+	fmt.Println("Good luck ^-^")
+
 	err := http.ListenAndServe(":80", router)
 	if err != nil {
 		log.Fatal(err)
