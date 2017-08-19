@@ -1,8 +1,8 @@
 package main
 
 import (
-	"io"
 	"encoding/json"
+	"github.com/valyala/fasthttp"
 )
 
 type User struct {
@@ -14,9 +14,9 @@ type User struct {
 	BirthDate int        `json:"birth_date"`
 }
 
-func updateUser(body io.Reader, rec *User, required bool) bool {
+func updateUser(ctx *fasthttp.RequestCtx, rec *User, required bool) bool {
 	dict := make(map[string]interface{})
-	if err := json.NewDecoder(body).Decode(&dict); err != nil {
+	if err := json.Unmarshal(ctx.PostBody(), &dict); err != nil {
 		return false
 	}
 
@@ -53,9 +53,9 @@ type Location struct {
 	Distance int        `json:"distance"`
 }
 
-func updateLocation(body io.Reader, rec *Location, required bool) bool {
+func updateLocation(ctx *fasthttp.RequestCtx, rec *Location, required bool) bool {
 	dict := make(map[string]interface{})
-	if err := json.NewDecoder(body).Decode(&dict); err != nil {
+	if err := json.Unmarshal(ctx.PostBody(), &dict); err != nil {
 		return false
 	}
 
@@ -89,9 +89,9 @@ type Visit struct {
 	Mark      int    `json:"mark"`
 }
 
-func updateVisit(body io.Reader, rec *Visit, required bool) bool {
+func updateVisit(ctx *fasthttp.RequestCtx, rec *Visit, required bool) bool {
 	dict := make(map[string]interface{})
-	if err := json.NewDecoder(body).Decode(&dict); err != nil {
+	if err := json.Unmarshal(ctx.PostBody(), &dict); err != nil {
 		return false
 	}
 

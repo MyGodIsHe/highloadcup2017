@@ -2,15 +2,13 @@ package main
 
 import (
 	"time"
-	"strconv"
 	"log"
 	"fmt"
 	"strings"
 	"encoding/json"
 	"archive/zip"
 	"net/http"
-	"net/http/httptest"
-	"github.com/julienschmidt/httprouter"
+	"github.com/valyala/fasthttp"
 )
 
 func diff(a, b time.Time) int {
@@ -100,52 +98,21 @@ func parseInt(dict map[string]interface{}, value *int, name string, required boo
 }
 
 
-func getIntFromQuery(sv string) (string, int, interface{}) {
-	var v int
-	var err interface{}
-	if sv != "" {
-		v, err = strconv.Atoi(sv)
+func getIntFromQuery(ctx *fasthttp.RequestCtx, sv string) (bool, int, interface{}) {
+	args := ctx.URI().QueryArgs()
+	if args.Has(sv) {
+		v, err := args.GetUint(sv)
+		return true, v, err
 	}
-	return sv, v, err
+	return false, 0, nil
 }
+
 
 type Cache struct {
 	Code int
 	Content []byte
 	HeaderMap http.Header
 }
-
-var cacheStorage = make(map[string]Cache)
-
-func cached(next httprouter.Handle) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
-		ch, ok := cacheStorage[r.RequestURI]
-		if ok {
-			for k, v := range ch.HeaderMap {
-				w.Header()[k] = v
-			}
-			w.WriteHeader(ch.Code)
-			w.Write(ch.Content)
-		} else {
-			c := httptest.NewRecorder()
-			next(c, r, ps)
-
-			for k, v := range c.HeaderMap {
-				w.Header()[k] = v
-			}
-
-			w.WriteHeader(c.Code)
-			content := c.Body.Bytes()
-
-			cacheStorage[r.RequestURI] = Cache{ c.Code, content, c.HeaderMap}
-
-			w.Write(content)
-		}
-
-	}
-}
-
 
 func loadData(fname string) {
 	r, err := zip.OpenReader(fname)

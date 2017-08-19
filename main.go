@@ -18,65 +18,63 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 
-	"github.com/julienschmidt/httprouter"
+	"github.com/buaazp/fasthttprouter"
+	"github.com/valyala/fasthttp"
 )
 
 
 func main() {
 	loadData("/tmp/data/data.zip")
 
-	router := httprouter.New()
+	router := fasthttprouter.New()
 
-	router.GET("/users/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		id, err := strconv.Atoi(ps.ByName("id"))
+	router.GET("/users/:id", func(ctx *fasthttp.RequestCtx) {
+		id, err := strconv.Atoi(ctx.UserValue("id").(string))
 		if err != nil {
-			w.WriteHeader(404)
+			ctx.SetStatusCode(404)
 			return
 		}
 		rec, ok := users[id]
 		if !ok {
-			w.WriteHeader(404)
+			ctx.SetStatusCode(404)
 			return
 		}
-		json.NewEncoder(w).Encode(rec)
+		json.NewEncoder(ctx).Encode(rec)
 	})
 
-	router.POST("/users/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		cacheStorage = make(map[string]Cache)
-
+	router.POST("/users/:id", func(ctx *fasthttp.RequestCtx) {
 		var id int
 		var err interface{}
 		var rec User
 
-		param := ps.ByName("id")
+		param := ctx.UserValue("id").(string)
 		is_insert := param == "new"
 		if !is_insert {
 			id, err = strconv.Atoi(param)
 			if err != nil {
-				w.WriteHeader(404)
+				ctx.SetStatusCode(404)
 				return
 			}
 			var ok bool
 			rec, ok = users[id]
 			if !ok {
-				w.WriteHeader(404)
+				ctx.SetStatusCode(404)
 				return
 			}
 		}
 
 		old_email := rec.Email
 
-		if !updateUser(r.Body, &rec, is_insert) {
-			w.WriteHeader(400)
+		if !updateUser(ctx, &rec, is_insert) {
+			ctx.SetStatusCode(400)
 			return
 		}
 
 		if is_insert {
 			_, ok := users_emails[rec.Email]
 			if ok {
-				w.WriteHeader(400)
+				ctx.SetStatusCode(400)
 				return
 			}
 			users_emails[rec.Email] = true
@@ -84,7 +82,7 @@ func main() {
 			if old_email != rec.Email {
 				_, ok := users_emails[rec.Email]
 				if ok {
-					w.WriteHeader(400)
+					ctx.SetStatusCode(400)
 					return
 				}
 
@@ -95,132 +93,128 @@ func main() {
 
 		users[rec.Id] = rec
 
-		w.Write(OK)
+		ctx.Write(OK)
 	})
 
-	router.GET("/locations/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		id, err := strconv.Atoi(ps.ByName("id"))
+	router.GET("/locations/:id", func(ctx *fasthttp.RequestCtx) {
+		id, err := strconv.Atoi(ctx.UserValue("id").(string))
 		if err != nil {
-			w.WriteHeader(404)
+			ctx.SetStatusCode(404)
 			return
 		}
 		rec, ok := locations[id]
 		if !ok {
-			w.WriteHeader(404)
+			ctx.SetStatusCode(404)
 			return
 		}
-		json.NewEncoder(w).Encode(rec)
+		json.NewEncoder(ctx).Encode(rec)
 	})
 
-	router.POST("/locations/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		cacheStorage = make(map[string]Cache)
-
+	router.POST("/locations/:id", func(ctx *fasthttp.RequestCtx) {
 		var id int
 		var err interface{}
 		var rec Location
 
-		param := ps.ByName("id")
+		param := ctx.UserValue("id").(string)
 		is_insert := param == "new"
 		if !is_insert {
 			id, err = strconv.Atoi(param)
 			if err != nil {
-				w.WriteHeader(404)
+				ctx.SetStatusCode(404)
 				return
 			}
 			var ok bool
 			rec, ok = locations[id]
 			if !ok {
-				w.WriteHeader(404)
+				ctx.SetStatusCode(404)
 				return
 			}
 		}
 
-		if !updateLocation(r.Body, &rec, is_insert) {
-			w.WriteHeader(400)
+		if !updateLocation(ctx, &rec, is_insert) {
+			ctx.SetStatusCode(400)
 			return
 		}
 
 		locations[rec.Id] = rec
 
-		w.Write(OK)
+		ctx.Write(OK)
 	})
 
-	router.GET("/visits/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		id, err := strconv.Atoi(ps.ByName("id"))
+	router.GET("/visits/:id", func(ctx *fasthttp.RequestCtx) {
+		id, err := strconv.Atoi(ctx.UserValue("id").(string))
 		if err != nil {
-			w.WriteHeader(404)
+			ctx.SetStatusCode(404)
 			return
 		}
 		rec, ok := visits[id]
 		if !ok {
-			w.WriteHeader(404)
+			ctx.SetStatusCode(404)
 			return
 		}
-		json.NewEncoder(w).Encode(rec)
+		json.NewEncoder(ctx).Encode(rec)
 	})
 
-	router.POST("/visits/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		cacheStorage = make(map[string]Cache)
-
+	router.POST("/visits/:id", func(ctx *fasthttp.RequestCtx) {
 		var id int
 		var err interface{}
 		var rec Visit
 
-		param := ps.ByName("id")
+		param := ctx.UserValue("id").(string)
 		is_insert := param == "new"
 		if !is_insert {
 			id, err = strconv.Atoi(param)
 			if err != nil {
-				w.WriteHeader(404)
+				ctx.SetStatusCode(404)
 				return
 			}
 			var ok bool
 			rec, ok = visits[id]
 			if !ok {
-				w.WriteHeader(404)
+				ctx.SetStatusCode(404)
 				return
 			}
 		}
 
-		if !updateVisit(r.Body, &rec, is_insert) {
-			w.WriteHeader(400)
+		if !updateVisit(ctx, &rec, is_insert) {
+			ctx.SetStatusCode(400)
 			return
 		}
 
 		visitSetEvent(rec)
 
-		w.Write(OK)
+		ctx.Write(OK)
 	})
 
-	router.GET("/users/:id/visits", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	router.GET("/users/:id/visits", func(ctx *fasthttp.RequestCtx) {
 		var id int
 		var err interface{}
 
-		id, err = strconv.Atoi(ps.ByName("id"))
+		id, err = strconv.Atoi(ctx.UserValue("id").(string))
 		if err != nil {
-			w.WriteHeader(404)
+			ctx.SetStatusCode(404)
 			return
 		}
 
 		_, ok := users[id]
 		if !ok {
-			w.WriteHeader(404)
+			ctx.SetStatusCode(404)
 			return
 		}
 
-		fromDate, fromDateValue, err := getIntFromQuery(r.URL.Query().Get("fromDate"))
+		hasFromDate, fromDateValue, err := getIntFromQuery(ctx,"fromDate")
 		if err != nil {
-			w.WriteHeader(400);
+			ctx.SetStatusCode(400);
 			return
 		}
 
-		toDate, toDateValue, err := getIntFromQuery(r.URL.Query().Get("toDate"))
+		hasToDate, toDateValue, err := getIntFromQuery(ctx, "toDate")
 		if err != nil {
-			w.WriteHeader(400);
+			ctx.SetStatusCode(400);
 			return
 		}
 
-		country := r.URL.Query().Get("country")
+		country := string(ctx.URI().QueryArgs().Peek("country"))
 		var l Location
 		/*{
 			is_found := false
@@ -233,24 +227,25 @@ func main() {
 					}
 				}
 				if !is_found {
-					w.WriteHeader(404)
+					ctx.SetStatusCode(404)
 					return
 				}
 			}
 		}*/
 
-		toDistance, toDistanceValue, err := getIntFromQuery(r.URL.Query().Get("toDistance"))
+		ctx.URI().QueryArgs().GetUintOrZero("toDistance")
+		hasToDistance, toDistanceValue, err := getIntFromQuery(ctx, "toDistance")
 		if err != nil {
-			w.WriteHeader(400);
+			ctx.SetStatusCode(400);
 			return
 		}
 
 		result := ShortVisits{}
 		for _, v := range visits_by_user[id] {
-			if fromDate != "" && v.VisitedAt <= fromDateValue {
+			if hasFromDate && v.VisitedAt <= fromDateValue {
 				continue
 			}
-			if toDate != "" && v.VisitedAt >= toDateValue {
+			if hasToDate && v.VisitedAt >= toDateValue {
 				continue
 			}
 			l = locations[v.Location]
@@ -260,58 +255,59 @@ func main() {
 			//if country == "" {
 			//	l = locations[v.Location]
 			//} else if v.Location != l.Id { continue }
-			if toDistance != "" && l.Distance >= toDistanceValue {
+			if hasToDistance && l.Distance >= toDistanceValue {
 				continue
 			}
 			result = append(result, ShortVisit{Mark: v.Mark, Place: l.Place, VisitedAt: v.VisitedAt})
 		}
 		sort.Sort(result)
-		json.NewEncoder(w).Encode(DataShortVisit{Visits: result})
+		json.NewEncoder(ctx).Encode(DataShortVisit{Visits: result})
 	})
 
-	router.GET("/locations/:id/avg", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	router.GET("/locations/:id/avg", func(ctx *fasthttp.RequestCtx) {
 		var id int
 		var err interface{}
 
-		id, err = strconv.Atoi(ps.ByName("id"))
+		id, err = strconv.Atoi(ctx.UserValue("id").(string))
 		if err != nil {
-			w.WriteHeader(404)
+			ctx.SetStatusCode(404)
 			return
 		}
 
 		_, ok := locations[id]
 		if !ok {
-			w.WriteHeader(404)
+			ctx.SetStatusCode(404)
 			return
 		}
 
-		fromDate, fromDateValue, err := getIntFromQuery(r.URL.Query().Get("fromDate"))
+
+		hasFromDate, fromDateValue, err := getIntFromQuery(ctx, "fromDate")
 		if err != nil {
-			w.WriteHeader(400);
+			ctx.SetStatusCode(400);
 			return
 		}
 
-		toDate, toDateValue, err := getIntFromQuery(r.URL.Query().Get("toDate"))
+		hasToDate, toDateValue, err := getIntFromQuery(ctx, "toDate")
 		if err != nil {
-			w.WriteHeader(400);
+			ctx.SetStatusCode(400);
 			return
 		}
 
-		fromAge, fromAgeValue, err := getIntFromQuery(r.URL.Query().Get("fromAge"))
+		hasFromAge, fromAgeValue, err := getIntFromQuery(ctx, "fromAge")
 		if err != nil {
-			w.WriteHeader(400);
+			ctx.SetStatusCode(400);
 			return
 		}
 
-		toAge, toAgeValue, err := getIntFromQuery(r.URL.Query().Get("toAge"))
+		hasToAge, toAgeValue, err := getIntFromQuery(ctx, "toAge")
 		if err != nil {
-			w.WriteHeader(400);
+			ctx.SetStatusCode(400);
 			return
 		}
 
-		gender := r.URL.Query().Get("gender")
+		gender := string(ctx.URI().QueryArgs().Peek("gender"))
 		if gender != "" && gender != "f" && gender != "m" {
-			w.WriteHeader(400)
+			ctx.SetStatusCode(400)
 			return
 		}
 
@@ -323,10 +319,10 @@ func main() {
 			if v.Location != id {
 				continue
 			}
-			if fromDate != "" && v.VisitedAt <= fromDateValue {
+			if hasFromDate && v.VisitedAt <= fromDateValue {
 				continue
 			}
-			if toDate != "" && v.VisitedAt >= toDateValue {
+			if hasToDate && v.VisitedAt >= toDateValue {
 				continue
 			}
 			u := users[v.User]
@@ -334,10 +330,10 @@ func main() {
 				continue
 			}
 			age := diff(time.Unix(int64(u.BirthDate), 0).UTC(), now)
-			if fromAge != "" && age < fromAgeValue {
+			if hasFromAge && age < fromAgeValue {
 				continue
 			}
-			if toAge != "" && age >= toAgeValue {
+			if hasToAge && age >= toAgeValue {
 				continue
 			}
 			avgCount++
@@ -349,12 +345,12 @@ func main() {
 		}
 		avg, _ = strconv.ParseFloat(fmt.Sprintf("%.5f", avg), 64)
 		//fmt.Println("avg", r.URL.String(), avg, )
-		json.NewEncoder(w).Encode(DataAvg{Avg: avg})
+		json.NewEncoder(ctx).Encode(DataAvg{Avg: avg})
 	})
 
 	fmt.Println("Good luck ^-^")
 
-	err := http.ListenAndServe(":80", router)
+	err := fasthttp.ListenAndServe(":80", router.Handler)
 	if err != nil {
 		log.Fatal(err)
 	}
