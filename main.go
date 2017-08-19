@@ -1,6 +1,8 @@
 /*
 export GOPATH="$HOME/go"
 export GOBIN=$GOPATH/bin
+export PATH=${PATH}:/usr/local/go/bin
+export GOROOT=/usr/local/go
 
 curl -i http://localhost:80/users/2
 curl -i http://localhost:80/users/new -d '{"first_name": "Пётр", "last_name": "Фетатосян", "birth_date": -1720915200, "gender": "m", "id": 10, "email": "wibylcudestiwuk@icloud.com"}'
@@ -21,10 +23,14 @@ import (
 
 	"github.com/buaazp/fasthttprouter"
 	"github.com/valyala/fasthttp"
+	"github.com/patrickmn/go-cache"
 )
 
+var cs *cache.Cache
 
 func main() {
+	cs = cache.New(cache.NoExpiration, cache.NoExpiration)
+
 	loadData("/tmp/data/data.zip")
 
 	router := fasthttprouter.New()
@@ -216,22 +222,6 @@ func main() {
 
 		country := string(ctx.URI().QueryArgs().Peek("country"))
 		var l Location
-		/*{
-			is_found := false
-			if country != "" {
-				for _, x := range locations {
-					if x.Country == country {
-						l = x
-						is_found = true
-						break
-					}
-				}
-				if !is_found {
-					ctx.SetStatusCode(404)
-					return
-				}
-			}
-		}*/
 
 		ctx.URI().QueryArgs().GetUintOrZero("toDistance")
 		hasToDistance, toDistanceValue, err := getIntFromQuery(ctx, "toDistance")
@@ -344,14 +334,14 @@ func main() {
 			avg = float64(avgSum) / float64(avgCount)
 		}
 		avg, _ = strconv.ParseFloat(fmt.Sprintf("%.5f", avg), 64)
-		//fmt.Println("avg", r.URL.String(), avg, )
 		json.NewEncoder(ctx).Encode(DataAvg{Avg: avg})
 	})
 
 	fmt.Println("Good luck ^-^")
 
 	server := fasthttp.Server{
-		Handler: router.Handler,
+		Handler: CacheHandlerFunc(router.Handler),
+		//Handler: router.Handler,
 		//WriteTimeout: 2*time.Second,
 	}
 	err := server.ListenAndServe(":80")

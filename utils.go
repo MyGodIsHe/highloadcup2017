@@ -7,7 +7,6 @@ import (
 	"strings"
 	"encoding/json"
 	"archive/zip"
-	"net/http"
 	"github.com/valyala/fasthttp"
 )
 
@@ -108,12 +107,6 @@ func getIntFromQuery(ctx *fasthttp.RequestCtx, sv string) (bool, int, interface{
 }
 
 
-type Cache struct {
-	Code int
-	Content []byte
-	HeaderMap http.Header
-}
-
 func loadData(fname string) {
 	r, err := zip.OpenReader(fname)
 	if err != nil {
@@ -160,5 +153,35 @@ func loadData(fname string) {
 		}
 		rc.Close()
 		fmt.Println("done")
+	}
+}
+
+type CacheValue struct {
+	Code int
+	Body string
+}
+
+//var cacheStorage = make(map[string]CacheValue)
+
+func CacheHandlerFunc(bodyHandler fasthttp.RequestHandler) fasthttp.RequestHandler {
+	return func (ctx *fasthttp.RequestCtx) {
+		m := ctx.Method()
+		if m[0] == 'G' && m[1] == 'E' && m[2] == 'T' {
+			uri := string(append(m, ctx.RequestURI()...))
+
+			data, exists := cs.Get(uri)
+			if !exists {
+				bodyHandler(ctx)
+				body := ctx.Response.Body()
+				cs.SetDefault(uri, CacheValue{ctx.Response.StatusCode(), string(body)})
+				return
+			}
+			res := data.(CacheValue)
+
+			ctx.SetStatusCode(res.Code)
+			ctx.SetBodyString(res.Body)
+		} else {
+			bodyHandler(ctx)
+		}
 	}
 }
