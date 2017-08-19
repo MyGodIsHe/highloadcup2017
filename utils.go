@@ -109,14 +109,24 @@ func getIntFromQuery(sv string) (string, int, interface{}) {
 	return sv, v, err
 }
 
+type Cache struct {
+	Code int
+	Content []byte
+	HeaderMap http.Header
+}
+
+var cacheStorage = make(map[string]Cache)
 
 func cached(next httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
-		content, ok := cache[r.RequestURI]
+		ch, ok := cacheStorage[r.RequestURI]
 		if ok {
-			fmt.Println("Cache Hit!")
-			w.Write(content)
+			for k, v := range ch.HeaderMap {
+				w.Header()[k] = v
+			}
+			w.WriteHeader(ch.Code)
+			w.Write(ch.Content)
 		} else {
 			c := httptest.NewRecorder()
 			next(c, r, ps)
@@ -128,7 +138,7 @@ func cached(next httprouter.Handle) httprouter.Handle {
 			w.WriteHeader(c.Code)
 			content := c.Body.Bytes()
 
-			cache[r.RequestURI] = content
+			cacheStorage[r.RequestURI] = Cache{ c.Code, content, c.HeaderMap}
 
 			w.Write(content)
 		}
