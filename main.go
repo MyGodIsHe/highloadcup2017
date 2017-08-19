@@ -23,14 +23,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-var OK = []byte("{}\n")
-
-var users = make(map[int]User)
-var users_emails = make(map[string]bool)
-
-var locations = make(map[int]Location)
-
-var visits = make(map[int]Visit)
 
 func main() {
 	loadData("/tmp/data/data.zip")
@@ -195,7 +187,7 @@ func main() {
 			return
 		}
 
-		visits[rec.Id] = rec
+		visitSetEvent(rec)
 
 		w.Write(OK)
 	})
@@ -254,10 +246,7 @@ func main() {
 		}
 
 		result := ShortVisits{}
-		for _, v := range visits {
-			if v.User != id {
-				continue
-			}
+		for _, v := range visits_by_user[id] {
 			if fromDate != "" && v.VisitedAt <= fromDateValue {
 				continue
 			}

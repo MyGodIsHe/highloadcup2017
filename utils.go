@@ -188,7 +188,7 @@ func loadData(fname string) {
 				log.Fatal(err)
 			}
 			for _, rec := range recs.Visits {
-				visits[rec.Id] = rec
+				visitSetEvent(rec)
 			}
 		}
 		rc.Close()

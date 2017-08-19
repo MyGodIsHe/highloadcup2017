@@ -119,6 +119,21 @@ func updateVisit(body io.Reader, rec *Visit, required bool) bool {
 	return true
 }
 
+func visitSetEvent(rec Visit) {
+	orig := visits[rec.Id]
+	vs, ok := visits_by_user[rec.User]
+	if !ok {
+		vs = make(map[int]Visit)
+	}
+	vs[rec.Id] = rec
+	visits_by_user[rec.User] = vs
+	visits[rec.Id] = rec
+
+	if orig.User != rec.User {
+		delete(visits_by_user[orig.User], orig.Id)
+	}
+}
+
 type DataVisit struct {
 	Visits []Visit    `json:"visits"`
 }
