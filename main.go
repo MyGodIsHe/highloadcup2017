@@ -350,7 +350,11 @@ func main() {
 
 	fmt.Println("Good luck ^-^")
 
-	err := fasthttp.ListenAndServe(":80", router.Handler)
+	server := fasthttp.Server{
+		Handler: router.Handler,
+		//WriteTimeout: 2*time.Second,
+	}
+	err := server.ListenAndServe(":80")
 	if err != nil {
 		log.Fatal(err)
 	}
