@@ -32,6 +32,7 @@ var locations = make(map[int]Location)
 
 var visits = make(map[int]Visit)
 
+var cache = make(map[string][]byte)
 
 func main() {
 	loadData("/tmp/data/data.zip")
@@ -53,6 +54,8 @@ func main() {
 	})
 
 	router.POST("/users/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		cache = make(map[string][]byte)
+
 		var id int
 		var err interface{}
 		var rec User
@@ -120,6 +123,8 @@ func main() {
 	})
 
 	router.POST("/locations/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		cache = make(map[string][]byte)
+
 		var id int
 		var err interface{}
 		var rec Location
@@ -165,6 +170,8 @@ func main() {
 	})
 
 	router.POST("/visits/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		cache = make(map[string][]byte)
+
 		var id int
 		var err interface{}
 		var rec Visit
@@ -195,7 +202,7 @@ func main() {
 		w.Write(OK)
 	})
 
-	router.GET("/users/:id/visits", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	router.GET("/users/:id/visits", cached(func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		var id int
 		var err interface{}
 
@@ -273,9 +280,9 @@ func main() {
 		}
 		sort.Sort(result)
 		json.NewEncoder(w).Encode(DataShortVisit{Visits: result})
-	})
+	}))
 
-	router.GET("/locations/:id/avg", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	router.GET("/locations/:id/avg", cached(func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		var id int
 		var err interface{}
 
@@ -356,7 +363,7 @@ func main() {
 		avg, _ = strconv.ParseFloat(fmt.Sprintf("%.5f", avg), 64)
 		//fmt.Println("avg", r.URL.String(), avg, )
 		json.NewEncoder(w).Encode(DataAvg{Avg: avg})
-	})
+	}))
 
 	fmt.Println("Good luck ^-^")
 

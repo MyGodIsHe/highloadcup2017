@@ -8,6 +8,9 @@ import (
 	"strings"
 	"encoding/json"
 	"archive/zip"
+	"net/http"
+	"net/http/httptest"
+	"github.com/julienschmidt/httprouter"
 )
 
 func diff(a, b time.Time) int {
@@ -104,6 +107,33 @@ func getIntFromQuery(sv string) (string, int, interface{}) {
 		v, err = strconv.Atoi(sv)
 	}
 	return sv, v, err
+}
+
+
+func cached(next httprouter.Handle) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+
+		content, ok := cache[r.RequestURI]
+		if ok {
+			fmt.Println("Cache Hit!")
+			w.Write(content)
+		} else {
+			c := httptest.NewRecorder()
+			next(c, r, ps)
+
+			for k, v := range c.HeaderMap {
+				w.Header()[k] = v
+			}
+
+			w.WriteHeader(c.Code)
+			content := c.Body.Bytes()
+
+			cache[r.RequestURI] = content
+
+			w.Write(content)
+		}
+
+	}
 }
 
 
