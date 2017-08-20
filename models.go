@@ -101,13 +101,13 @@ func updateVisit(ctx *fasthttp.RequestCtx, rec *Visit, required bool) bool {
 	if !parseInt(dict, &rec.Location, "location", required) {
 		return false
 	}
-	if _, ok := locations[rec.Location]; !ok {
+	if _, ok := locations.Load(rec.Location); !ok {
 		return false
 	}
 	if !parseInt(dict, &rec.User, "user", required) {
 		return false
 	}
-	if _, ok := users[rec.User]; !ok {
+	if _, ok := users.Load(rec.User); !ok {
 		return false
 	}
 	if !parseInt(dict, &rec.VisitedAt, "visited_at", required) || (rec.VisitedAt < 946659600 || rec.VisitedAt > 1420045200) {
@@ -120,17 +120,26 @@ func updateVisit(ctx *fasthttp.RequestCtx, rec *Visit, required bool) bool {
 }
 
 func visitSetEvent(rec Visit) {
-	orig := visits[rec.Id]
-	vs, ok := visits_by_user[rec.User]
-	if !ok {
-		vs = make(map[int]Visit)
+	var tmp interface{}
+	var orig_ok bool
+	var orig Visit
+	tmp, orig_ok = visits.Load(rec.Id)
+	if orig_ok {
+		orig = tmp.(Visit)
 	}
-	vs[rec.Id] = rec
-	visits_by_user[rec.User] = vs
-	visits[rec.Id] = rec
+	var vs *Map
+	tmp, ok := visits_by_user.Load(rec.User)
+	if !ok {
+		vs = new(Map)
+		visits_by_user.Store(rec.User, vs)
+	} else {
+		vs = tmp.(*Map)
+	}
+	vs.Store(rec.Id, rec)
+	visits.Store(rec.Id, rec)
 
-	if orig.User != rec.User {
-		delete(visits_by_user[orig.User], orig.Id)
+	if orig_ok && orig.User != rec.User {
+		vs.Delete(orig.Id)
 	}
 }
 

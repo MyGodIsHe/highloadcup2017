@@ -2,11 +2,10 @@ package main
 
 
 var OK = []byte("{}\n")
+var users = new(Map)
+var users_emails = new(Map)
 
-var users = make(map[int]User)
-var users_emails = make(map[string]bool)
+var locations = new(Map)
 
-var locations = make(map[int]Location)
-
-var visits = make(map[int]Visit)
-var visits_by_user = make(map[int]map[int]Visit)
+var visits = new(Map)
+var visits_by_user = new(Map)

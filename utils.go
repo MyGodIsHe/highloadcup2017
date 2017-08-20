@@ -127,8 +127,8 @@ func loadData(fname string) {
 				log.Fatal(err)
 			}
 			for _, rec := range recs.Users {
-				users[rec.Id] = rec
-				users_emails[rec.Email] = true
+				users.Store(rec.Id, rec)
+				users_emails.Store(rec.Email, true)
 			}
 		}
 		if strings.HasPrefix(f.Name, "locations") {
@@ -138,7 +138,7 @@ func loadData(fname string) {
 				log.Fatal(err)
 			}
 			for _, rec := range recs.Locations {
-				locations[rec.Id] = rec
+				locations.Store(rec.Id, rec)
 			}
 		}
 		if strings.HasPrefix(f.Name, "visits") {

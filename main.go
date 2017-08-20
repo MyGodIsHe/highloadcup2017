@@ -1,8 +1,6 @@
 /*
 export GOPATH="$HOME/go"
 export GOBIN=$GOPATH/bin
-export PATH=${PATH}:/usr/local/go/bin
-export GOROOT=/usr/local/go
 
 curl -i http://localhost:80/users/2
 curl -i http://localhost:80/users/new -d '{"first_name": "Пётр", "last_name": "Фетатосян", "birth_date": -1720915200, "gender": "m", "id": 10, "email": "wibylcudestiwuk@icloud.com"}'
@@ -41,7 +39,7 @@ func main() {
 			ctx.SetStatusCode(404)
 			return
 		}
-		rec, ok := users[id]
+		rec, ok := users.Load(id)
 		if !ok {
 			ctx.SetStatusCode(404)
 			return
@@ -62,12 +60,12 @@ func main() {
 				ctx.SetStatusCode(404)
 				return
 			}
-			var ok bool
-			rec, ok = users[id]
+			r, ok := users.Load(id)
 			if !ok {
 				ctx.SetStatusCode(404)
 				return
 			}
+			rec = r.(User)
 		}
 
 		old_email := rec.Email
@@ -78,26 +76,26 @@ func main() {
 		}
 
 		if is_insert {
-			_, ok := users_emails[rec.Email]
+			_, ok := users_emails.Load(rec.Email)
 			if ok {
 				ctx.SetStatusCode(400)
 				return
 			}
-			users_emails[rec.Email] = true
+			users_emails.Store(rec.Email, true)
 		} else {
 			if old_email != rec.Email {
-				_, ok := users_emails[rec.Email]
+				_, ok := users_emails.Load(rec.Email)
 				if ok {
 					ctx.SetStatusCode(400)
 					return
 				}
 
-				delete(users_emails, old_email)
-				users_emails[rec.Email] = true
+				users_emails.Delete(old_email)
+				users_emails.Store(rec.Email, true)
 			}
 		}
 
-		users[rec.Id] = rec
+		users.Store(rec.Id, rec)
 
 		ctx.Write(OK)
 	})
@@ -108,7 +106,7 @@ func main() {
 			ctx.SetStatusCode(404)
 			return
 		}
-		rec, ok := locations[id]
+		rec, ok := locations.Load(id)
 		if !ok {
 			ctx.SetStatusCode(404)
 			return
@@ -129,12 +127,12 @@ func main() {
 				ctx.SetStatusCode(404)
 				return
 			}
-			var ok bool
-			rec, ok = locations[id]
+			r, ok := locations.Load(id)
 			if !ok {
 				ctx.SetStatusCode(404)
 				return
 			}
+			rec = r.(Location)
 		}
 
 		if !updateLocation(ctx, &rec, is_insert) {
@@ -142,7 +140,7 @@ func main() {
 			return
 		}
 
-		locations[rec.Id] = rec
+		locations.Store(rec.Id, rec)
 
 		ctx.Write(OK)
 	})
@@ -153,7 +151,7 @@ func main() {
 			ctx.SetStatusCode(404)
 			return
 		}
-		rec, ok := visits[id]
+		rec, ok := visits.Load(id)
 		if !ok {
 			ctx.SetStatusCode(404)
 			return
@@ -174,12 +172,12 @@ func main() {
 				ctx.SetStatusCode(404)
 				return
 			}
-			var ok bool
-			rec, ok = visits[id]
+			r, ok := visits.Load(id)
 			if !ok {
 				ctx.SetStatusCode(404)
 				return
 			}
+			rec = r.(Visit)
 		}
 
 		if !updateVisit(ctx, &rec, is_insert) {
@@ -202,7 +200,7 @@ func main() {
 			return
 		}
 
-		_, ok := users[id]
+		_, ok := users.Load(id)
 		if !ok {
 			ctx.SetStatusCode(404)
 			return
@@ -221,7 +219,6 @@ func main() {
 		}
 
 		country := string(ctx.URI().QueryArgs().Peek("country"))
-		var l Location
 
 		ctx.URI().QueryArgs().GetUintOrZero("toDistance")
 		hasToDistance, toDistanceValue, err := getIntFromQuery(ctx, "toDistance")
@@ -230,27 +227,33 @@ func main() {
 			return
 		}
 
+		var l Location
+		var v Visit
 		result := ShortVisits{}
-		for _, v := range visits_by_user[id] {
-			if hasFromDate && v.VisitedAt <= fromDateValue {
-				continue
-			}
-			if hasToDate && v.VisitedAt >= toDateValue {
-				continue
-			}
-			l = locations[v.Location]
-			if country != "" && l.Country != country {
-				continue
-			}
-			//if country == "" {
-			//	l = locations[v.Location]
-			//} else if v.Location != l.Id { continue }
-			if hasToDistance && l.Distance >= toDistanceValue {
-				continue
-			}
-			result = append(result, ShortVisit{Mark: v.Mark, Place: l.Place, VisitedAt: v.VisitedAt})
+		items, ok := visits_by_user.Load(id)
+		if ok {
+			items.(*Map).Range(func(_, value interface{}) bool {
+				v = value.(Visit)
+				if hasFromDate && v.VisitedAt <= fromDateValue {
+					return true
+				}
+				if hasToDate && v.VisitedAt >= toDateValue {
+					return true
+				}
+				l_raw, _ := locations.Load(v.Location)
+				l = l_raw.(Location)
+				if country != "" && l.Country != country {
+					return true
+				}
+				if hasToDistance && l.Distance >= toDistanceValue {
+					return true
+				}
+				result = append(result, ShortVisit{Mark: v.Mark, Place: l.Place, VisitedAt: v.VisitedAt})
+
+				return true
+			})
+			sort.Sort(result)
 		}
-		sort.Sort(result)
 		json.NewEncoder(ctx).Encode(DataShortVisit{Visits: result})
 	})
 
@@ -264,7 +267,7 @@ func main() {
 			return
 		}
 
-		_, ok := locations[id]
+		_, ok := locations.Load(id)
 		if !ok {
 			ctx.SetStatusCode(404)
 			return
@@ -303,32 +306,36 @@ func main() {
 
 		now := time.Now().UTC()
 
+		var v Visit
 		avgCount := 0
 		avgSum := 0
-		for _, v := range visits {
+		visits.Range(func(_, value interface{}) bool {
+			v = value.(Visit)
 			if v.Location != id {
-				continue
+				return true
 			}
 			if hasFromDate && v.VisitedAt <= fromDateValue {
-				continue
+				return true
 			}
 			if hasToDate && v.VisitedAt >= toDateValue {
-				continue
+				return true
 			}
-			u := users[v.User]
+			u_raw, _ := users.Load(v.User)
+			u := u_raw.(User)
 			if gender != "" && u.Gender != gender {
-				continue
+				return true
 			}
 			age := diff(time.Unix(int64(u.BirthDate), 0).UTC(), now)
 			if hasFromAge && age < fromAgeValue {
-				continue
+				return true
 			}
 			if hasToAge && age >= toAgeValue {
-				continue
+				return true
 			}
 			avgCount++
 			avgSum += v.Mark
-		}
+			return true
+		})
 		var avg float64
 		if avgCount != 0 {
 			avg = float64(avgSum) / float64(avgCount)
