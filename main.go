@@ -98,6 +98,7 @@ func main() {
 		users.Store(rec.Id, rec)
 
 		ctx.Write(OK)
+		ctx.SetConnectionClose()
 	})
 
 	router.GET("/locations/:id", func(ctx *fasthttp.RequestCtx) {
@@ -143,6 +144,7 @@ func main() {
 		locations.Store(rec.Id, rec)
 
 		ctx.Write(OK)
+		ctx.SetConnectionClose()
 	})
 
 	router.GET("/visits/:id", func(ctx *fasthttp.RequestCtx) {
@@ -188,6 +190,7 @@ func main() {
 		visitSetEvent(rec)
 
 		ctx.Write(OK)
+		ctx.SetConnectionClose()
 	})
 
 	router.GET("/users/:id/visits", func(ctx *fasthttp.RequestCtx) {
@@ -349,7 +352,6 @@ func main() {
 	server := fasthttp.Server{
 		Handler: CacheHandlerFunc(router.Handler),
 		//Handler: router.Handler,
-		//WriteTimeout: 2*time.Second,
 	}
 	err := server.ListenAndServe(":80")
 	if err != nil {
