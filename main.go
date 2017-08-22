@@ -35,7 +35,7 @@ func main() {
 
 	router := fasthttprouter.New()
 
-	router.GET("/users/:id", func(ctx *fasthttp.RequestCtx) {
+	router.GET("/users/:id", CacheHandlerFunc(func(ctx *fasthttp.RequestCtx) {
 		id, err := strconv.Atoi(ctx.UserValue("id").(string))
 		if err != nil {
 			ctx.SetStatusCode(404)
@@ -47,7 +47,7 @@ func main() {
 			return
 		}
 		json.NewEncoder(ctx).Encode(rec)
-	})
+	}))
 
 	router.POST("/users/:id", func(ctx *fasthttp.RequestCtx) {
 		body := ctx.PostBody()
@@ -108,14 +108,14 @@ func main() {
 		users[rec.Id] = rec
 		{
 			data, _ := json.Marshal(rec)
-			uri := strings.Join([]string{"GET/users/", strconv.Itoa(rec.Id)}, "")
+			uri := strings.Join([]string{"/users/", strconv.Itoa(rec.Id)}, "")
 			cs.SetDefault(uri, CacheValue{200, string(data)})
-			cs.Delete(strings.Join([]string{"GET/users/", strconv.Itoa(rec.Id), "/visits"}, ""))
-			cs.Delete(strings.Join([]string{"GET/locations/", strconv.Itoa(rec.Id), "/avg"}, ""))
+			cs.Delete(strings.Join([]string{"/users/", strconv.Itoa(rec.Id), "/visits"}, ""))
+			cs.Delete(strings.Join([]string{"/locations/", strconv.Itoa(rec.Id), "/avg"}, ""))
 		}
 	})
 
-	router.GET("/locations/:id", func(ctx *fasthttp.RequestCtx) {
+	router.GET("/locations/:id", CacheHandlerFunc(func(ctx *fasthttp.RequestCtx) {
 		id, err := strconv.Atoi(ctx.UserValue("id").(string))
 		if err != nil {
 			ctx.SetStatusCode(404)
@@ -127,7 +127,7 @@ func main() {
 			return
 		}
 		json.NewEncoder(ctx).Encode(rec)
-	})
+	}))
 
 	router.POST("/locations/:id", func(ctx *fasthttp.RequestCtx) {
 		body := ctx.PostBody()
@@ -168,12 +168,12 @@ func main() {
 		locations[rec.Id] = rec
 		{
 			data, _ := json.Marshal(rec)
-			uri := strings.Join([]string{"GET/locations/", strconv.Itoa(rec.Id)}, "")
+			uri := strings.Join([]string{"/locations/", strconv.Itoa(rec.Id)}, "")
 			cs.SetDefault(uri, CacheValue{200, string(data)})
 		}
 	})
 
-	router.GET("/visits/:id", func(ctx *fasthttp.RequestCtx) {
+	router.GET("/visits/:id", CacheHandlerFunc(func(ctx *fasthttp.RequestCtx) {
 		id, err := strconv.Atoi(ctx.UserValue("id").(string))
 		if err != nil {
 			ctx.SetStatusCode(404)
@@ -185,7 +185,7 @@ func main() {
 			return
 		}
 		json.NewEncoder(ctx).Encode(rec)
-	})
+	}))
 
 	router.POST("/visits/:id", func(ctx *fasthttp.RequestCtx) {
 		body := ctx.PostBody()
@@ -226,14 +226,14 @@ func main() {
 		visitSetEvent(rec)
 		{
 			data, _ := json.Marshal(rec)
-			uri := strings.Join([]string{"GET/visits/", strconv.Itoa(rec.Id)}, "")
+			uri := strings.Join([]string{"/visits/", strconv.Itoa(rec.Id)}, "")
 			cs.SetDefault(uri, CacheValue{200, string(data)})
-			cs.Delete(strings.Join([]string{"GET/users/", strconv.Itoa(rec.User), "/visits"}, ""))
-			cs.Delete(strings.Join([]string{"GET/locations/", strconv.Itoa(rec.User), "/avg"}, ""))
+			cs.Delete(strings.Join([]string{"/users/", strconv.Itoa(rec.User), "/visits"}, ""))
+			cs.Delete(strings.Join([]string{"/locations/", strconv.Itoa(rec.User), "/avg"}, ""))
 		}
 	})
 
-	router.GET("/users/:id/visits", func(ctx *fasthttp.RequestCtx) {
+	router.GET("/users/:id/visits", CacheHandlerFunc(func(ctx *fasthttp.RequestCtx) {
 		var id int
 		var err interface{}
 
@@ -290,9 +290,9 @@ func main() {
 		}
 		sort.Sort(result)
 		json.NewEncoder(ctx).Encode(DataShortVisit{Visits: result})
-	})
+	}))
 
-	router.GET("/locations/:id/avg", func(ctx *fasthttp.RequestCtx) {
+	router.GET("/locations/:id/avg", CacheHandlerFunc(func(ctx *fasthttp.RequestCtx) {
 		var id int
 		var err interface{}
 
@@ -371,13 +371,12 @@ func main() {
 		avg, _ = strconv.ParseFloat(fmt.Sprintf("%.5f", avg), 64)
 		//avg = float32(int32(avg*100000+0.5)) / 100000
 		json.NewEncoder(ctx).Encode(DataAvg{Avg: avg})
-	})
+	}))
 
 	fmt.Println("Good luck ^-^")
 
 	server := fasthttp.Server{
-		Handler: CacheHandlerFunc(router.Handler),
-		//Handler: router.Handler,
+		Handler: router.Handler,
 	}
 	err := server.ListenAndServe(":80")
 	if err != nil {
