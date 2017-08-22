@@ -160,5 +160,5 @@ type DataShortVisit struct {
 }
 
 type DataAvg struct {
-	Avg float32    `json:"avg"`
+	Avg float64    `json:"avg"`
 }
