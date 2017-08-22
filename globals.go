@@ -11,3 +11,4 @@ var locations = make(map[int]Location)
 
 var visits = make(map[int]Visit)
 var visits_by_user = make(map[int]map[int]Visit)
+var visits_by_location = make(map[int]map[int]Visit)

@@ -101,16 +101,35 @@ func updateVisit(body []byte, rec *Visit, required bool) bool {
 
 func visitSetEvent(rec Visit) {
 	orig := visits[rec.Id]
-	vs, ok := visits_by_user[rec.User]
-	if !ok {
-		vs = make(map[int]Visit)
-	}
-	vs[rec.Id] = rec
-	visits_by_user[rec.User] = vs
-	visits[rec.Id] = rec
 
-	if orig.User != rec.User {
-		delete(visits_by_user[orig.User], orig.Id)
+	// visits_by_user
+	{
+		vs, ok := visits_by_user[rec.User]
+		if !ok {
+			vs = make(map[int]Visit)
+		}
+		vs[rec.Id] = rec
+		visits_by_user[rec.User] = vs
+		visits[rec.Id] = rec
+
+		if orig.User != rec.User {
+			delete(visits_by_user[orig.User], orig.Id)
+		}
+	}
+
+	// visits_by_location
+	{
+		vs, ok := visits_by_location[rec.Location]
+		if !ok {
+			vs = make(map[int]Visit)
+		}
+		vs[rec.Id] = rec
+		visits_by_location[rec.Location] = vs
+		visits[rec.Id] = rec
+
+		if orig.Location != rec.Location {
+			delete(visits_by_location[orig.Location], orig.Id)
+		}
 	}
 }
 
@@ -141,5 +160,5 @@ type DataShortVisit struct {
 }
 
 type DataAvg struct {
-	Avg float64    `json:"avg"`
+	Avg float32    `json:"avg"`
 }

@@ -55,7 +55,6 @@ func main() {
 			ctx.SetConnectionClose()
 			return
 		}
-
 		ctx.Write(OK)
 		ctx.SetConnectionClose()
 
@@ -105,7 +104,6 @@ func main() {
 				users_emails[rec.Email] = true
 			}
 		}
-
 		users[rec.Id] = rec
 	})
 
@@ -265,9 +263,6 @@ func main() {
 			if country != "" && l.Country != country {
 				continue
 			}
-			//if country == "" {
-			//	l = locations[v.Location]
-			//} else if v.Location != l.Id { continue }
 			if hasToDistance && l.Distance >= toDistanceValue {
 				continue
 			}
@@ -328,10 +323,7 @@ func main() {
 
 		avgCount := 0
 		avgSum := 0
-		for _, v := range visits {
-			if v.Location != id {
-				continue
-			}
+		for _, v := range visits_by_location[id] {
 			if hasFromDate && v.VisitedAt <= fromDateValue {
 				continue
 			}
@@ -352,11 +344,11 @@ func main() {
 			avgCount++
 			avgSum += v.Mark
 		}
-		var avg float64
+		var avg float32
 		if avgCount != 0 {
-			avg = float64(avgSum) / float64(avgCount)
+			avg = float32(avgSum) / float32(avgCount)
 		}
-		avg, _ = strconv.ParseFloat(fmt.Sprintf("%.5f", avg), 64)
+		avg = float32(int32(avg*100000+0.5)) / 100000
 		json.NewEncoder(ctx).Encode(DataAvg{Avg: avg})
 	})
 
