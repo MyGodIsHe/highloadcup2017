@@ -15,27 +15,21 @@ import (
 	"time"
 	"sort"
 	"strconv"
-	"encoding/json"
 	"fmt"
 	"log"
 
 	"github.com/buaazp/fasthttprouter"
 	"github.com/valyala/fasthttp"
-	"github.com/patrickmn/go-cache"
 	"bytes"
-	"strings"
 )
 
-var cs *cache.Cache
 
 func main() {
-	cs = cache.New(cache.NoExpiration, cache.NoExpiration)
-
 	loadData("/tmp/data/data.zip")
 
 	router := fasthttprouter.New()
 
-	router.GET("/users/:id", CacheHandlerFunc(func(ctx *fasthttp.RequestCtx) {
+	router.GET("/users/:id", func(ctx *fasthttp.RequestCtx) {
 		id, err := strconv.Atoi(ctx.UserValue("id").(string))
 		if err != nil {
 			ctx.SetStatusCode(404)
@@ -46,8 +40,8 @@ func main() {
 			ctx.SetStatusCode(404)
 			return
 		}
-		json.NewEncoder(ctx).Encode(rec)
-	}))
+		rec.Write(ctx)
+	})
 
 	router.POST("/users/:id", func(ctx *fasthttp.RequestCtx) {
 		body := ctx.PostBody()
@@ -81,7 +75,7 @@ func main() {
 
 		old_email := rec.Email
 
-		if !updateUser(body, &rec, is_insert) {
+		if !rec.Update(body, is_insert) {
 			ctx.SetStatusCode(400)
 			return
 		}
@@ -106,16 +100,9 @@ func main() {
 			}
 		}
 		users[rec.Id] = rec
-		{
-			data, _ := json.Marshal(rec)
-			uri := strings.Join([]string{"/users/", strconv.Itoa(rec.Id)}, "")
-			cs.SetDefault(uri, CacheValue{200, string(data)})
-			cs.Delete(strings.Join([]string{"/users/", strconv.Itoa(rec.Id), "/visits"}, ""))
-			cs.Delete(strings.Join([]string{"/locations/", strconv.Itoa(rec.Id), "/avg"}, ""))
-		}
 	})
 
-	router.GET("/locations/:id", CacheHandlerFunc(func(ctx *fasthttp.RequestCtx) {
+	router.GET("/locations/:id", func(ctx *fasthttp.RequestCtx) {
 		id, err := strconv.Atoi(ctx.UserValue("id").(string))
 		if err != nil {
 			ctx.SetStatusCode(404)
@@ -126,8 +113,8 @@ func main() {
 			ctx.SetStatusCode(404)
 			return
 		}
-		json.NewEncoder(ctx).Encode(rec)
-	}))
+		rec.Write(ctx)
+	})
 
 	router.POST("/locations/:id", func(ctx *fasthttp.RequestCtx) {
 		body := ctx.PostBody()
@@ -160,20 +147,15 @@ func main() {
 			}
 		}
 
-		if !updateLocation(body, &rec, is_insert) {
+		if !rec.Update(body, is_insert) {
 			ctx.SetStatusCode(400)
 			return
 		}
 
 		locations[rec.Id] = rec
-		{
-			data, _ := json.Marshal(rec)
-			uri := strings.Join([]string{"/locations/", strconv.Itoa(rec.Id)}, "")
-			cs.SetDefault(uri, CacheValue{200, string(data)})
-		}
 	})
 
-	router.GET("/visits/:id", CacheHandlerFunc(func(ctx *fasthttp.RequestCtx) {
+	router.GET("/visits/:id", func(ctx *fasthttp.RequestCtx) {
 		id, err := strconv.Atoi(ctx.UserValue("id").(string))
 		if err != nil {
 			ctx.SetStatusCode(404)
@@ -184,8 +166,8 @@ func main() {
 			ctx.SetStatusCode(404)
 			return
 		}
-		json.NewEncoder(ctx).Encode(rec)
-	}))
+		rec.Write(ctx)
+	})
 
 	router.POST("/visits/:id", func(ctx *fasthttp.RequestCtx) {
 		body := ctx.PostBody()
@@ -218,22 +200,15 @@ func main() {
 			}
 		}
 
-		if !updateVisit(body, &rec, is_insert) {
+		if !rec.Update(body, is_insert) {
 			ctx.SetStatusCode(400)
 			return
 		}
 
 		visitSetEvent(rec)
-		{
-			data, _ := json.Marshal(rec)
-			uri := strings.Join([]string{"/visits/", strconv.Itoa(rec.Id)}, "")
-			cs.SetDefault(uri, CacheValue{200, string(data)})
-			cs.Delete(strings.Join([]string{"/users/", strconv.Itoa(rec.User), "/visits"}, ""))
-			cs.Delete(strings.Join([]string{"/locations/", strconv.Itoa(rec.User), "/avg"}, ""))
-		}
 	})
 
-	router.GET("/users/:id/visits", CacheHandlerFunc(func(ctx *fasthttp.RequestCtx) {
+	router.GET("/users/:id/visits", func(ctx *fasthttp.RequestCtx) {
 		var id int
 		var err interface{}
 
@@ -289,10 +264,11 @@ func main() {
 			result = append(result, ShortVisit{Mark: v.Mark, Place: l.Place, VisitedAt: v.VisitedAt})
 		}
 		sort.Sort(result)
-		json.NewEncoder(ctx).Encode(DataShortVisit{Visits: result})
-	}))
+		WriteShortVisits(ctx, result)
+		//json.NewEncoder(ctx).Encode(DataShortVisit{Visits: result})
+	})
 
-	router.GET("/locations/:id/avg", CacheHandlerFunc(func(ctx *fasthttp.RequestCtx) {
+	router.GET("/locations/:id/avg", func(ctx *fasthttp.RequestCtx) {
 		var id int
 		var err interface{}
 
@@ -368,10 +344,10 @@ func main() {
 		if avgCount != 0 {
 			avg = float64(avgSum) / float64(avgCount)
 		}
-		avg, _ = strconv.ParseFloat(fmt.Sprintf("%.5f", avg), 64)
+		//avg, _ = strconv.ParseFloat(fmt.Sprintf("%.5f", avg), 64)
 		//avg = float32(int32(avg*100000+0.5)) / 100000
-		json.NewEncoder(ctx).Encode(DataAvg{Avg: avg})
-	}))
+		WriteAvg(ctx, avg)
+	})
 
 	fmt.Println("Good luck ^-^")
 

@@ -9,7 +9,6 @@ import (
 	"archive/zip"
 	"github.com/valyala/fasthttp"
 	"github.com/buger/jsonparser"
-	"strconv"
 )
 
 func diff(a, b time.Time) int {
@@ -122,11 +121,6 @@ func loadData(fname string) {
 			for _, rec := range recs.Users {
 				users[rec.Id] = rec
 				users_emails[rec.Email] = true
-				{
-					data, _ := json.Marshal(rec)
-					uri := strings.Join([]string{"/users/", strconv.Itoa(rec.Id)}, "")
-					cs.SetDefault(uri, CacheValue{200, string(data)})
-				}
 			}
 		}
 		if strings.HasPrefix(f.Name, "locations") {
@@ -137,11 +131,6 @@ func loadData(fname string) {
 			}
 			for _, rec := range recs.Locations {
 				locations[rec.Id] = rec
-				{
-					data, _ := json.Marshal(rec)
-					uri := strings.Join([]string{"/locations/", strconv.Itoa(rec.Id)}, "")
-					cs.SetDefault(uri, CacheValue{200, string(data)})
-				}
 			}
 		}
 		if strings.HasPrefix(f.Name, "visits") {
@@ -152,36 +141,9 @@ func loadData(fname string) {
 			}
 			for _, rec := range recs.Visits {
 				visitSetEvent(rec)
-				{
-					data, _ := json.Marshal(rec)
-					uri := strings.Join([]string{"/visits/", strconv.Itoa(rec.Id)}, "")
-					cs.SetDefault(uri, CacheValue{200, string(data)})
-				}
 			}
 		}
 		rc.Close()
 		fmt.Println("done")
-	}
-}
-
-type CacheValue struct {
-	Code int
-	Body string
-}
-
-func CacheHandlerFunc(next func(ctx *fasthttp.RequestCtx)) func (ctx *fasthttp.RequestCtx) {
-	return func (ctx *fasthttp.RequestCtx) {
-		uri := ctx.Request.URI().String()
-		data, exists := cs.Get(uri)
-		if !exists {
-			next(ctx)
-			body := ctx.Response.Body()
-			cs.SetDefault(uri, CacheValue{ctx.Response.StatusCode(), string(body)})
-			return
-		}
-		res := data.(CacheValue)
-
-		ctx.SetStatusCode(res.Code)
-		ctx.SetBodyString(res.Body)
 	}
 }

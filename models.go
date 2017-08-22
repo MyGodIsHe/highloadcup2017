@@ -1,5 +1,11 @@
 package main
 
+import (
+	"github.com/valyala/fasthttp"
+	"strings"
+	"strconv"
+)
+
 type User struct {
 	Id        int        `json:"id"`
 	Email     string    `json:"email"`
@@ -9,7 +15,7 @@ type User struct {
 	BirthDate int        `json:"birth_date"`
 }
 
-func updateUser(body []byte, rec *User, required bool) bool {
+func (rec *User) Update(body []byte, required bool) bool {
 	if !parseId(body, &rec.Id, required) {
 		return false
 	}
@@ -31,6 +37,19 @@ func updateUser(body []byte, rec *User, required bool) bool {
 	return true
 }
 
+func (rec *User) Write(ctx *fasthttp.RequestCtx) {
+	ctx.SetBodyString(strings.Join([]string{
+		"{",
+		"\"id\": ", strconv.Itoa(rec.Id), ",",
+		"\"email\": \"", rec.Email, "\",",
+		"\"first_name\": \"", rec.FirstName, "\",",
+		"\"last_name\": \"", rec.LastName, "\",",
+		"\"gender\": \"", rec.Gender, "\",",
+		"\"birth_date\": ", strconv.Itoa(rec.BirthDate),
+		"}",
+	}, ""))
+}
+
 type DataUser struct {
 	Users []User    `json:"users"`
 }
@@ -43,7 +62,7 @@ type Location struct {
 	Distance int        `json:"distance"`
 }
 
-func updateLocation(body []byte, rec *Location, required bool) bool {
+func (rec *Location) Update(body []byte, required bool) bool {
 	if !parseId(body, &rec.Id, required) {
 		return false
 	}
@@ -62,6 +81,18 @@ func updateLocation(body []byte, rec *Location, required bool) bool {
 	return true
 }
 
+func (rec *Location) Write(ctx *fasthttp.RequestCtx) {
+	ctx.SetBodyString(strings.Join([]string{
+		"{",
+		"\"id\": ", strconv.Itoa(rec.Id), ",",
+		"\"place\": \"", rec.Place, "\",",
+		"\"country\": \"", rec.Country, "\",",
+		"\"city\": \"", rec.City, "\",",
+		"\"distance\": ", strconv.Itoa(rec.Distance),
+		"}",
+	}, ""))
+}
+
 type DataLocation struct {
 	Locations []Location    `json:"locations"`
 }
@@ -74,7 +105,7 @@ type Visit struct {
 	Mark      int    `json:"mark"`
 }
 
-func updateVisit(body []byte, rec *Visit, required bool) bool {
+func (rec *Visit) Update(body []byte, required bool) bool {
 	if !parseId(body, &rec.Id, required) {
 		return false
 	}
@@ -97,6 +128,18 @@ func updateVisit(body []byte, rec *Visit, required bool) bool {
 		return false
 	}
 	return true
+}
+
+func (rec *Visit) Write(ctx *fasthttp.RequestCtx) {
+	ctx.SetBodyString(strings.Join([]string{
+		"{",
+		"\"id\": ", strconv.Itoa(rec.Id), ",",
+		"\"location\": ", strconv.Itoa(rec.Location), ",",
+		"\"user\": ", strconv.Itoa(rec.User), ",",
+		"\"visited_at\": ", strconv.Itoa(rec.VisitedAt), ",",
+		"\"mark\": ", strconv.Itoa(rec.Mark),
+		"}",
+	}, ""))
 }
 
 func visitSetEvent(rec Visit) {
@@ -155,10 +198,29 @@ func (s ShortVisits) Less(i, j int) bool {
 	return s[i].VisitedAt < s[j].VisitedAt
 }
 
-type DataShortVisit struct {
-	Visits ShortVisits    `json:"visits"`
+func WriteShortVisits(ctx *fasthttp.RequestCtx, visits ShortVisits) {
+	var data []string
+	data = append(data, "{\"visits\": [")
+	for i, v := range visits {
+		if i != 0 {
+			data = append(data, ",")
+		}
+		data = append(data,
+			"{",
+			"\"mark\": ", strconv.Itoa(v.Mark), ",",
+			"\"place\": \"", v.Place, "\",",
+			"\"visited_at\": ", strconv.Itoa(v.VisitedAt),
+			"}",
+		)
+	}
+	data = append(data, "]}")
+	ctx.SetBodyString(strings.Join(data, ""))
 }
 
-type DataAvg struct {
-	Avg float64    `json:"avg"`
+func WriteAvg(ctx *fasthttp.RequestCtx, avg float64) {
+	ctx.SetBodyString(strings.Join([]string{
+		"{",
+		"\"avg\": ", strconv.FormatFloat(avg, 'f', 5, 64),
+		"}",
+	}, ""))
 }
