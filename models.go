@@ -1,10 +1,5 @@
 package main
 
-import (
-	"encoding/json"
-	"github.com/valyala/fasthttp"
-)
-
 type User struct {
 	Id        int        `json:"id"`
 	Email     string    `json:"email"`
@@ -14,28 +9,23 @@ type User struct {
 	BirthDate int        `json:"birth_date"`
 }
 
-func updateUser(ctx *fasthttp.RequestCtx, rec *User, required bool) bool {
-	dict := make(map[string]interface{})
-	if err := json.Unmarshal(ctx.PostBody(), &dict); err != nil {
+func updateUser(body []byte, rec *User, required bool) bool {
+	if !parseId(body, &rec.Id, required) {
 		return false
 	}
-
-	if !parseId(dict, &rec.Id, required) {
+	if !parseString(body, &rec.Email, "email", required) || len(rec.Email) > 100 {
 		return false
 	}
-	if !parseString(dict, &rec.Email, "email", required) || len(rec.Email) > 100 {
+	if !parseString(body, &rec.FirstName, "first_name", required) || len(rec.FirstName) > 50 {
 		return false
 	}
-	if !parseString(dict, &rec.FirstName, "first_name", required) || len(rec.FirstName) > 50 {
+	if !parseString(body, &rec.LastName, "last_name", required) || len(rec.LastName) > 50 {
 		return false
 	}
-	if !parseString(dict, &rec.LastName, "last_name", required) || len(rec.LastName) > 50 {
+	if !parseString(body, &rec.Gender, "gender", required) || (rec.Gender != "f" && rec.Gender != "m") {
 		return false
 	}
-	if !parseString(dict, &rec.Gender, "gender", required) || (rec.Gender != "f" && rec.Gender != "m") {
-		return false
-	}
-	if !parseInt(dict, &rec.BirthDate, "birth_date", required) || (rec.BirthDate < -1262325600 || rec.BirthDate > 915123600) {
+	if !parseInt(body, &rec.BirthDate, "birth_date", required) || (rec.BirthDate < -1262325600 || rec.BirthDate > 915123600) {
 		return false
 	}
 	return true
@@ -53,25 +43,20 @@ type Location struct {
 	Distance int        `json:"distance"`
 }
 
-func updateLocation(ctx *fasthttp.RequestCtx, rec *Location, required bool) bool {
-	dict := make(map[string]interface{})
-	if err := json.Unmarshal(ctx.PostBody(), &dict); err != nil {
+func updateLocation(body []byte, rec *Location, required bool) bool {
+	if !parseId(body, &rec.Id, required) {
 		return false
 	}
-
-	if !parseId(dict, &rec.Id, required) {
+	if !parseString(body, &rec.Place, "place", required) {
 		return false
 	}
-	if !parseString(dict, &rec.Place, "place", required) {
+	if !parseString(body, &rec.Country, "country", required) || len(rec.Country) > 50 {
 		return false
 	}
-	if !parseString(dict, &rec.Country, "country", required) || len(rec.Country) > 50 {
+	if !parseString(body, &rec.City, "city", required) || len(rec.City) > 50 {
 		return false
 	}
-	if !parseString(dict, &rec.City, "city", required) || len(rec.City) > 50 {
-		return false
-	}
-	if !parseInt(dict, &rec.Distance, "distance", required) {
+	if !parseInt(body, &rec.Distance, "distance", required) {
 		return false
 	}
 	return true
@@ -89,57 +74,43 @@ type Visit struct {
 	Mark      int    `json:"mark"`
 }
 
-func updateVisit(ctx *fasthttp.RequestCtx, rec *Visit, required bool) bool {
-	dict := make(map[string]interface{})
-	if err := json.Unmarshal(ctx.PostBody(), &dict); err != nil {
+func updateVisit(body []byte, rec *Visit, required bool) bool {
+	if !parseId(body, &rec.Id, required) {
 		return false
 	}
-
-	if !parseId(dict, &rec.Id, required) {
+	if !parseInt(body, &rec.Location, "location", required) {
 		return false
 	}
-	if !parseInt(dict, &rec.Location, "location", required) {
+	if _, ok := locations[rec.Location]; !ok {
 		return false
 	}
-	if _, ok := locations.Load(rec.Location); !ok {
+	if !parseInt(body, &rec.User, "user", required) {
 		return false
 	}
-	if !parseInt(dict, &rec.User, "user", required) {
+	if _, ok := users[rec.User]; !ok {
 		return false
 	}
-	if _, ok := users.Load(rec.User); !ok {
+	if !parseInt(body, &rec.VisitedAt, "visited_at", required) || (rec.VisitedAt < 946659600 || rec.VisitedAt > 1420045200) {
 		return false
 	}
-	if !parseInt(dict, &rec.VisitedAt, "visited_at", required) || (rec.VisitedAt < 946659600 || rec.VisitedAt > 1420045200) {
-		return false
-	}
-	if !parseInt(dict, &rec.Mark, "mark", required) || (rec.Mark < 0 || rec.Mark > 5) {
+	if !parseInt(body, &rec.Mark, "mark", required) || (rec.Mark < 0 || rec.Mark > 5) {
 		return false
 	}
 	return true
 }
 
 func visitSetEvent(rec Visit) {
-	var tmp interface{}
-	var orig_ok bool
-	var orig Visit
-	tmp, orig_ok = visits.Load(rec.Id)
-	if orig_ok {
-		orig = tmp.(Visit)
-	}
-	var vs *Map
-	tmp, ok := visits_by_user.Load(rec.User)
+	orig := visits[rec.Id]
+	vs, ok := visits_by_user[rec.User]
 	if !ok {
-		vs = new(Map)
-		visits_by_user.Store(rec.User, vs)
-	} else {
-		vs = tmp.(*Map)
+		vs = make(map[int]Visit)
 	}
-	vs.Store(rec.Id, rec)
-	visits.Store(rec.Id, rec)
+	vs[rec.Id] = rec
+	visits_by_user[rec.User] = vs
+	visits[rec.Id] = rec
 
-	if orig_ok && orig.User != rec.User {
-		vs.Delete(orig.Id)
+	if orig.User != rec.User {
+		delete(visits_by_user[orig.User], orig.Id)
 	}
 }
 

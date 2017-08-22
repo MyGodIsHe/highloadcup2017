@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"archive/zip"
 	"github.com/valyala/fasthttp"
+	"github.com/buger/jsonparser"
 )
 
 func diff(a, b time.Time) int {
@@ -57,42 +58,33 @@ func diff(a, b time.Time) int {
 	return year
 }
 
-func parseId(dict map[string]interface{}, value *int, required bool) bool {
+func parseId(body []byte, value *int, required bool) bool {
 	if !required {
 		return true
 	}
-	v, ok := dict["id"]
-	if ok && v == nil {
+	v , err := jsonparser.GetInt(body, "id")
+	if err != nil {
 		return false
 	}
-	if !ok {
-		return false
-	}
-	*value = int(v.(float64))
+	*value = int(v)
 	return true
 }
 
-func parseString(dict map[string]interface{}, value *string, name string, required bool) bool {
-	v, ok := dict[name]
-	if ok && v == nil {
-		return false
-	}
-	if !ok {
+func parseString(body []byte, value *string, name string, required bool) bool {
+	v , err := jsonparser.GetString(body, name)
+	if err != nil {
 		return !required
 	}
-	*value = v.(string)
+	*value = v
 	return true
 }
 
-func parseInt(dict map[string]interface{}, value *int, name string, required bool) bool {
-	v, ok := dict[name]
-	if ok && v == nil {
-		return false
-	}
-	if !ok {
+func parseInt(body []byte, value *int, name string, required bool) bool {
+	v , err := jsonparser.GetInt(body, name)
+	if err != nil {
 		return !required
 	}
-	*value = int(v.(float64))
+	*value = int(v)
 	return true
 }
 
@@ -127,8 +119,8 @@ func loadData(fname string) {
 				log.Fatal(err)
 			}
 			for _, rec := range recs.Users {
-				users.Store(rec.Id, rec)
-				users_emails.Store(rec.Email, true)
+				users[rec.Id] = rec
+				users_emails[rec.Email] = true
 			}
 		}
 		if strings.HasPrefix(f.Name, "locations") {
@@ -138,7 +130,7 @@ func loadData(fname string) {
 				log.Fatal(err)
 			}
 			for _, rec := range recs.Locations {
-				locations.Store(rec.Id, rec)
+				locations[rec.Id] = rec
 			}
 		}
 		if strings.HasPrefix(f.Name, "visits") {
