@@ -2,7 +2,7 @@ package main
 
 
 var OK = []byte("{}\n")
-var NULL = []byte("null")
+var NULL = []byte(": null")
 
 var users = make(map[int]User)
 var users_emails = make(map[string]bool)
