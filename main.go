@@ -30,11 +30,13 @@ func users_get(ctx *fasthttp.RequestCtx, id int) {
 	}
 	rec.Write(ctx)
 }
+
 func users_create(ctx *fasthttp.RequestCtx) {
 	body := ctx.PostBody()
 	if len(body) == 0 || bytes.Contains(body, NULL) {
 		ctx.SetStatusCode(400)
 		ctx.SetConnectionClose()
+		return
 	}
 	ctx.Write(OK)
 	ctx.SetConnectionClose()
@@ -327,8 +329,6 @@ func locations_avg(ctx *fasthttp.RequestCtx, id int) {
 	if avgCount != 0 {
 		avg = float64(avgSum) / float64(avgCount)
 	}
-	//avg, _ = strconv.ParseFloat(fmt.Sprintf("%.5f", avg), 64)
-	//avg = float32(int32(avg*100000+0.5)) / 100000
 	WriteAvg(ctx, avg)
 }
 
@@ -398,20 +398,8 @@ func RouterHandler(ctx *fasthttp.RequestCtx) {
 }
 
 
-
 func main() {
 	loadData("/tmp/data/data.zip")
-
-	//router := fasthttprouter.New()
-	//router.GET("/users/:id", users_get)
-	//router.POST("/users/:id", users_update)
-	//router.GET("/locations/:id", locations_get)
-	//router.POST("/locations/:id", locations_update)
-	//router.GET("/visits/:id", visits_get)
-	//router.POST("/visits/:id", visits_update)
-	//router.GET("/users/:id/visits", users_visits)
-	//router.GET("/locations/:id/avg", locations_avg)
-
 	fmt.Println("Good luck ^-^")
 
 	server := fasthttp.Server{
