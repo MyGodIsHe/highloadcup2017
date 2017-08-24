@@ -23,8 +23,8 @@ import (
 )
 
 func users_get(ctx *fasthttp.RequestCtx, id int) {
-	rec, ok := users[id]
-	if !ok {
+	rec := users[id]
+	if rec.Id == 0 {
 		ctx.SetStatusCode(404)
 		return
 	}
@@ -67,11 +67,8 @@ func users_update(ctx *fasthttp.RequestCtx, id int) {
 	ctx.Write(OK)
 	ctx.SetConnectionClose()
 
-	var rec User
-
-	var ok bool
-	rec, ok = users[id]
-	if !ok {
+	rec := users[id]
+	if rec.Id == 0 {
 		ctx.SetStatusCode(404)
 		return
 	}
@@ -97,8 +94,8 @@ func users_update(ctx *fasthttp.RequestCtx, id int) {
 }
 
 func locations_get(ctx *fasthttp.RequestCtx, id int) {
-	rec, ok := locations[id]
-	if !ok {
+	rec := locations[id]
+	if rec.Id == 0 {
 		ctx.SetStatusCode(404)
 		return
 	}
@@ -136,10 +133,8 @@ func locations_update(ctx *fasthttp.RequestCtx, id int) {
 	ctx.Write(OK)
 	ctx.SetConnectionClose()
 
-	var rec Location
-	var ok bool
-	rec, ok = locations[id]
-	if !ok {
+	rec := locations[id]
+	if rec.Id == 0 {
 		ctx.SetStatusCode(404)
 		return
 	}
@@ -153,8 +148,8 @@ func locations_update(ctx *fasthttp.RequestCtx, id int) {
 }
 
 func visits_get(ctx *fasthttp.RequestCtx, id int) {
-	rec, ok := visits[id]
-	if !ok {
+	rec := visits[id]
+	if rec.Id == 0 {
 		ctx.SetStatusCode(404)
 		return
 	}
@@ -192,10 +187,8 @@ func visits_update(ctx *fasthttp.RequestCtx, id int) {
 	ctx.Write(OK)
 	ctx.SetConnectionClose()
 
-	var rec Visit
-	var ok bool
-	rec, ok = visits[id]
-	if !ok {
+	rec := visits[id]
+	if rec.Id == 0 {
 		ctx.SetStatusCode(404)
 		return
 	}
@@ -211,8 +204,8 @@ func visits_update(ctx *fasthttp.RequestCtx, id int) {
 func users_visits(ctx *fasthttp.RequestCtx, id int) {
 	var err interface{}
 
-	_, ok := users[id]
-	if !ok {
+	rec := users[id]
+	if rec.Id == 0 {
 		ctx.SetStatusCode(404)
 		return
 	}
@@ -263,8 +256,8 @@ func users_visits(ctx *fasthttp.RequestCtx, id int) {
 
 func locations_avg(ctx *fasthttp.RequestCtx, id int) {
 	var err interface{}
-	_, ok := locations[id]
-	if !ok {
+	rec := locations[id]
+	if rec.Id == 0 {
 		ctx.SetStatusCode(404)
 		return
 	}

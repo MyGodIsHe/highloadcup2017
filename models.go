@@ -112,13 +112,13 @@ func (rec *Visit) Update(body []byte, required bool) bool {
 	if !parseInt(body, &rec.Location, "location", required) {
 		return false
 	}
-	if _, ok := locations[rec.Location]; !ok {
+	if locations[rec.Location].Id == 0 {
 		return false
 	}
 	if !parseInt(body, &rec.User, "user", required) {
 		return false
 	}
-	if _, ok := users[rec.User]; !ok {
+	if users[rec.User].Id == 0 {
 		return false
 	}
 	if !parseInt(body, &rec.VisitedAt, "visited_at", required) || (rec.VisitedAt < 946659600 || rec.VisitedAt > 1420045200) {

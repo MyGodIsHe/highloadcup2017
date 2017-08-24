@@ -146,4 +146,7 @@ func loadData(fname string) {
 		rc.Close()
 		fmt.Println("done")
 	}
+	fmt.Println("Users: ", len(users))
+	fmt.Println("Locations: ", len(locations))
+	fmt.Println("Visits: ", len(visits))
 }
