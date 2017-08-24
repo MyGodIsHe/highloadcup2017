@@ -46,7 +46,7 @@ func (rec *User) Write(ctx *fasthttp.RequestCtx) {
 		"\"last_name\": \"", rec.LastName, "\",",
 		"\"gender\": \"", rec.Gender, "\",",
 		"\"birth_date\": ", strconv.Itoa(rec.BirthDate),
-		"}",
+		"}\n",
 	}, ""))
 }
 
@@ -89,7 +89,7 @@ func (rec *Location) Write(ctx *fasthttp.RequestCtx) {
 		"\"country\": \"", rec.Country, "\",",
 		"\"city\": \"", rec.City, "\",",
 		"\"distance\": ", strconv.Itoa(rec.Distance),
-		"}",
+		"}\n",
 	}, ""))
 }
 
@@ -138,7 +138,7 @@ func (rec *Visit) Write(ctx *fasthttp.RequestCtx) {
 		"\"user\": ", strconv.Itoa(rec.User), ",",
 		"\"visited_at\": ", strconv.Itoa(rec.VisitedAt), ",",
 		"\"mark\": ", strconv.Itoa(rec.Mark),
-		"}",
+		"}\n",
 	}, ""))
 }
 
@@ -213,7 +213,7 @@ func WriteShortVisits(ctx *fasthttp.RequestCtx, visits ShortVisits) {
 			"}",
 		)
 	}
-	data = append(data, "]}")
+	data = append(data, "]}\n")
 	ctx.SetBodyString(strings.Join(data, ""))
 }
 
@@ -221,6 +221,6 @@ func WriteAvg(ctx *fasthttp.RequestCtx, avg float64) {
 	ctx.SetBodyString(strings.Join([]string{
 		"{",
 		"\"avg\": ", strconv.FormatFloat(avg, 'f', 5, 64),
-		"}",
+		"}\n",
 	}, ""))
 }
