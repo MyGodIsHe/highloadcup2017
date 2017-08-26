@@ -4,11 +4,11 @@ package main
 var OK = []byte("{}\n")
 var NULL = []byte(": null")
 
-var users [10000000]User
+var users [1100000]User
 var users_emails = make(map[string]bool)
 
-var locations [10000000]Location
+var locations [1100000]Location
 
-var visits [10000000]Visit
-var visits_by_user = make(map[int]map[int]Visit)
-var visits_by_location = make(map[int]map[int]Visit)
+var visits [11000000]Visit
+var visits_by_user [1100000][]int
+var visits_by_location [1100000][]int

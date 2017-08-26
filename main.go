@@ -13,13 +13,13 @@ package main
 
 import (
 	"time"
-	"sort"
 	"strconv"
 	"fmt"
 	"log"
 	"bytes"
 
 	"github.com/valyala/fasthttp"
+	"sort"
 )
 
 func users_get(ctx *fasthttp.RequestCtx, id int) {
@@ -173,7 +173,7 @@ func visits_create(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	visitSetEvent(rec)
+	go visitSetEvent(rec)
 }
 
 func visits_update(ctx *fasthttp.RequestCtx, id int) {
@@ -198,7 +198,7 @@ func visits_update(ctx *fasthttp.RequestCtx, id int) {
 		return
 	}
 
-	visitSetEvent(rec)
+	go visitSetEvent(rec)
 }
 
 func users_visits(ctx *fasthttp.RequestCtx, id int) {
@@ -233,7 +233,8 @@ func users_visits(ctx *fasthttp.RequestCtx, id int) {
 	}
 
 	result := ShortVisits{}
-	for _, v := range visits_by_user[id] {
+	for _, vid := range visits_by_user[id] {
+		v := visits[vid]
 		if hasFromDate && v.VisitedAt <= fromDateValue {
 			continue
 		}
@@ -297,7 +298,8 @@ func locations_avg(ctx *fasthttp.RequestCtx, id int) {
 
 	avgCount := 0
 	avgSum := 0
-	for _, v := range visits_by_location[id] {
+	for _, vid := range visits_by_location[id] {
+		v := visits[vid]
 		if hasFromDate && v.VisitedAt <= fromDateValue {
 			continue
 		}

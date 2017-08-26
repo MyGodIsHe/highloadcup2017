@@ -121,7 +121,7 @@ func (rec *Visit) Update(body []byte, required bool) bool {
 	if users[rec.User].Id == 0 {
 		return false
 	}
-	if !parseInt(body, &rec.VisitedAt, "visited_at", required) || (rec.VisitedAt < 946659600 || rec.VisitedAt > 1420045200) {
+	if !parseInt(body, &rec.VisitedAt, "visited_at", required) {
 		return false
 	}
 	if !parseInt(body, &rec.Mark, "mark", required) || (rec.Mark < 0 || rec.Mark > 5) {
@@ -142,37 +142,43 @@ func (rec *Visit) Write(ctx *fasthttp.RequestCtx) {
 	}, ""))
 }
 
+func OrderedDelete(a []int, i int) []int {
+	return append(a[:i], a[i+1:]...)
+}
+
 func visitSetEvent(rec Visit) {
 	orig := visits[rec.Id]
+	visits[rec.Id] = rec
+	//return
 
 	// visits_by_user
 	{
-		vs, ok := visits_by_user[rec.User]
-		if !ok {
-			vs = make(map[int]Visit)
+		vs := visits_by_user[rec.User]
+		if !OrderedHas(vs, rec.Id) {
+			vs = OrderedInsert(vs, rec.Id)
 		}
-		vs[rec.Id] = rec
+		if orig.Id != 0 && orig.User != rec.User {
+			i, ok := OrderedSearch(vs, orig.Id)
+			if ok {
+				vs = OrderedDelete(vs, i)
+			}
+		}
 		visits_by_user[rec.User] = vs
-		visits[rec.Id] = rec
-
-		if orig.User != rec.User {
-			delete(visits_by_user[orig.User], orig.Id)
-		}
 	}
 
 	// visits_by_location
 	{
-		vs, ok := visits_by_location[rec.Location]
-		if !ok {
-			vs = make(map[int]Visit)
+		vs := visits_by_location[rec.Location]
+		if !OrderedHas(vs, rec.Id) {
+			vs = OrderedInsert(vs, rec.Id)
 		}
-		vs[rec.Id] = rec
+		if orig.Id != 0 && orig.Location != rec.Location {
+			i, ok := OrderedSearch(vs, orig.Id)
+			if ok {
+				vs = OrderedDelete(vs, i)
+			}
+		}
 		visits_by_location[rec.Location] = vs
-		visits[rec.Id] = rec
-
-		if orig.Location != rec.Location {
-			delete(visits_by_location[orig.Location], orig.Id)
-		}
 	}
 }
 

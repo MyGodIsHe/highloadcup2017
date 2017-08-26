@@ -9,6 +9,7 @@ import (
 	"archive/zip"
 	"github.com/valyala/fasthttp"
 	"github.com/buger/jsonparser"
+	"sort"
 )
 
 func diff(a, b time.Time) int {
@@ -99,6 +100,35 @@ func getIntFromQuery(ctx *fasthttp.RequestCtx, sv string) (bool, int, interface{
 }
 
 
+func OrderedInsert(a []int, j int) []int {
+	n := len(a)
+	if n == 0 {
+		return append(a, j)
+	}
+
+	i := sort.Search(n, func(i int) bool { return a[i] >= j})
+	return append(a[:i], append([]int{j}, a[i:]...)...)
+}
+
+func OrderedSearch(a []int, j int) (int, bool) {
+	n := len(a)
+	i := sort.Search(n, func(i int) bool { return a[i] == j})
+	if i == n {  // not found
+		return 0, false
+	}
+	return i, true
+}
+
+func OrderedHas(a []int, j int) bool {
+	n := len(a)
+	i := sort.Search(n, func(i int) bool { return a[i] == j})
+	if i == n {  // not found
+		return false
+	}
+	return true
+}
+
+
 func loadData(fname string) {
 	r, err := zip.OpenReader(fname)
 	if err != nil {
@@ -109,6 +139,7 @@ func loadData(fname string) {
 	for _, f := range r.File {
 		fmt.Printf("%s loading..", f.Name)
 		rc, err := f.Open()
+		defer rc.Close()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -143,7 +174,6 @@ func loadData(fname string) {
 				visitSetEvent(rec)
 			}
 		}
-		rc.Close()
 		fmt.Println("done")
 	}
 	fmt.Println("Users: ", len(users))
