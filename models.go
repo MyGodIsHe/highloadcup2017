@@ -4,6 +4,7 @@ import (
 	"github.com/valyala/fasthttp"
 	"strings"
 	"strconv"
+	"fmt"
 )
 
 type User struct {
@@ -142,42 +143,51 @@ func (rec *Visit) Write(ctx *fasthttp.RequestCtx) {
 	}, ""))
 }
 
-func OrderedDelete(a []int, i int) []int {
-	return append(a[:i], a[i+1:]...)
-}
-
 func visitSetEvent(rec Visit) {
 	orig := visits[rec.Id]
 	visits[rec.Id] = rec
-	//return
 
 	// visits_by_user
 	{
-		vs := visits_by_user[rec.User]
-		if vs == nil {
-			vs = make(map[int]bool)
+		if orig.Id == 0 {
+			vs := visits_by_user[rec.User]
+			vs = OrderedInsert(vs, rec.Id)
 			visits_by_user[rec.User] = vs
-		}
-		vs[rec.Id] = true
-		visits[rec.Id] = rec
-
-		if orig.User != rec.User {
-			delete(visits_by_user[orig.User], orig.Id)
+		} else if orig.User != rec.User {
+			vs := visits_by_user[orig.User]
+			i, ok := OrderedSearch(vs, orig.Id)
+			if ok {
+				visits_by_user[orig.User] = OrderedDelete(vs, i)
+			} else {
+				fmt.Println("user alarm", orig.Id, vs)
+			}
+			/* this is can be because we added from zip */
+			/* else { panic("Must be!") } */
+			vs = visits_by_user[rec.User]
+			vs = OrderedInsert(vs, rec.Id)
+			visits_by_user[rec.User] = vs
 		}
 	}
 
 	// visits_by_location
 	{
-		vs := visits_by_location[rec.Location]
-		if vs == nil {
-			vs = make(map[int]bool)
+		if orig.Id == 0 {
+			vs := visits_by_location[rec.Location]
+			vs = OrderedInsert(vs, rec.Id)
 			visits_by_location[rec.Location] = vs
-		}
-		vs[rec.Id] = true
-		visits[rec.Id] = rec
-
-		if orig.Location != rec.Location {
-			delete(visits_by_location[orig.Location], orig.Id)
+		} else if orig.Location != rec.Location {
+			vs := visits_by_location[orig.Location]
+			i, ok := OrderedSearch(vs, orig.Id)
+			if ok {
+				visits_by_location[orig.Location] = OrderedDelete(vs, i)
+			} else {
+				fmt.Println("loca alarm", orig.Id, vs)
+			}
+			/* this is can be because we added from zip */
+			/* else { panic("Must be!") } */
+			vs = visits_by_location[rec.Location]
+			vs = OrderedInsert(vs, rec.Id)
+			visits_by_location[rec.Location] = vs
 		}
 	}
 }

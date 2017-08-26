@@ -106,14 +106,14 @@ func OrderedInsert(a []int, j int) []int {
 		return append(a, j)
 	}
 
-	i := sort.Search(n, func(i int) bool { return a[i] >= j})
+	i := sort.Search(n, func(i int) bool { return a[i] >= j })
 	return append(a[:i], append([]int{j}, a[i:]...)...)
 }
 
 func OrderedSearch(a []int, j int) (int, bool) {
 	n := len(a)
-	i := sort.Search(n, func(i int) bool { return a[i] == j})
-	if i == n {  // not found
+	i := sort.Search(n, func(i int) bool { return a[i] >= j })
+	if i == n || a[i] != j {  // not found
 		return 0, false
 	}
 	return i, true
@@ -121,11 +121,15 @@ func OrderedSearch(a []int, j int) (int, bool) {
 
 func OrderedHas(a []int, j int) bool {
 	n := len(a)
-	i := sort.Search(n, func(i int) bool { return a[i] == j})
-	if i == n {  // not found
+	i := sort.Search(n, func(i int) bool { return a[i] >= j })
+	if i == n || a[i] != j {  // not found
 		return false
 	}
 	return true
+}
+
+func OrderedDelete(a []int, i int) []int {
+	return append(a[:i], a[i+1:]...)
 }
 
 

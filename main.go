@@ -261,7 +261,7 @@ func users_visits(ctx *fasthttp.RequestCtx, id int) {
 	}
 
 	result := ShortVisits{}
-	for vid, _ := range visits_by_user[id] {
+	for _, vid := range visits_by_user[id] {
 		v := visits[vid]
 		if hasFromDate && v.VisitedAt <= fromDateValue {
 			continue
@@ -330,7 +330,7 @@ func locations_avg(ctx *fasthttp.RequestCtx, id int) {
 
 	avgCount := 0
 	avgSum := 0
-	for vid, _ := range visits_by_location[id] {
+	for _, vid := range visits_by_location[id] {
 		v := visits[vid]
 		if hasFromDate && v.VisitedAt <= fromDateValue {
 			continue
