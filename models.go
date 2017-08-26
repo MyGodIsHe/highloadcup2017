@@ -154,31 +154,31 @@ func visitSetEvent(rec Visit) {
 	// visits_by_user
 	{
 		vs := visits_by_user[rec.User]
-		if !OrderedHas(vs, rec.Id) {
-			vs = OrderedInsert(vs, rec.Id)
+		if vs == nil {
+			vs = make(map[int]bool)
+			visits_by_user[rec.User] = vs
 		}
-		if orig.Id != 0 && orig.User != rec.User {
-			i, ok := OrderedSearch(vs, orig.Id)
-			if ok {
-				vs = OrderedDelete(vs, i)
-			}
+		vs[rec.Id] = true
+		visits[rec.Id] = rec
+
+		if orig.User != rec.User {
+			delete(visits_by_user[orig.User], orig.Id)
 		}
-		visits_by_user[rec.User] = vs
 	}
 
 	// visits_by_location
 	{
 		vs := visits_by_location[rec.Location]
-		if !OrderedHas(vs, rec.Id) {
-			vs = OrderedInsert(vs, rec.Id)
+		if vs == nil {
+			vs = make(map[int]bool)
+			visits_by_location[rec.Location] = vs
 		}
-		if orig.Id != 0 && orig.Location != rec.Location {
-			i, ok := OrderedSearch(vs, orig.Id)
-			if ok {
-				vs = OrderedDelete(vs, i)
-			}
+		vs[rec.Id] = true
+		visits[rec.Id] = rec
+
+		if orig.Location != rec.Location {
+			delete(visits_by_location[orig.Location], orig.Id)
 		}
-		visits_by_location[rec.Location] = vs
 	}
 }
 

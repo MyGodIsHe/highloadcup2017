@@ -152,6 +152,7 @@ func loadData(fname string) {
 			for _, rec := range recs.Users {
 				users[rec.Id] = rec
 				users_emails[rec.Email] = true
+				users_counter++
 			}
 		}
 		if strings.HasPrefix(f.Name, "locations") {
@@ -162,6 +163,7 @@ func loadData(fname string) {
 			}
 			for _, rec := range recs.Locations {
 				locations[rec.Id] = rec
+				locations_counter++
 			}
 		}
 		if strings.HasPrefix(f.Name, "visits") {
@@ -172,11 +174,12 @@ func loadData(fname string) {
 			}
 			for _, rec := range recs.Visits {
 				visitSetEvent(rec)
+				visits_counter++
 			}
 		}
 		fmt.Println("done")
 	}
-	fmt.Println("Users: ", len(users))
-	fmt.Println("Locations: ", len(locations))
-	fmt.Println("Visits: ", len(visits))
+	fmt.Println("Users: ", users_counter)
+	fmt.Println("Locations: ", locations_counter)
+	fmt.Println("Visits: ", visits_counter)
 }

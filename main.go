@@ -23,6 +23,10 @@ import (
 )
 
 func users_get(ctx *fasthttp.RequestCtx, id int) {
+	if id > 1100000 {
+		ctx.SetStatusCode(404)
+		return
+	}
 	rec := users[id]
 	if rec.Id == 0 {
 		ctx.SetStatusCode(404)
@@ -58,6 +62,10 @@ func users_create(ctx *fasthttp.RequestCtx) {
 }
 
 func users_update(ctx *fasthttp.RequestCtx, id int) {
+	if id > 1100000 {
+		ctx.SetStatusCode(404)
+		return
+	}
 	body := ctx.PostBody()
 	if len(body) == 0 || bytes.Contains(body, NULL) {
 		ctx.SetStatusCode(400)
@@ -94,6 +102,10 @@ func users_update(ctx *fasthttp.RequestCtx, id int) {
 }
 
 func locations_get(ctx *fasthttp.RequestCtx, id int) {
+	if id > 1100000 {
+		ctx.SetStatusCode(404)
+		return
+	}
 	rec := locations[id]
 	if rec.Id == 0 {
 		ctx.SetStatusCode(404)
@@ -123,6 +135,10 @@ func locations_create(ctx *fasthttp.RequestCtx) {
 }
 
 func locations_update(ctx *fasthttp.RequestCtx, id int) {
+	if id > 1100000 {
+		ctx.SetStatusCode(404)
+		return
+	}
 	body := ctx.PostBody()
 	if len(body) == 0 || bytes.Contains(body, NULL) {
 		ctx.SetStatusCode(400)
@@ -148,6 +164,10 @@ func locations_update(ctx *fasthttp.RequestCtx, id int) {
 }
 
 func visits_get(ctx *fasthttp.RequestCtx, id int) {
+	if id > 11000000 {
+		ctx.SetStatusCode(404)
+		return
+	}
 	rec := visits[id]
 	if rec.Id == 0 {
 		ctx.SetStatusCode(404)
@@ -177,6 +197,10 @@ func visits_create(ctx *fasthttp.RequestCtx) {
 }
 
 func visits_update(ctx *fasthttp.RequestCtx, id int) {
+	if id > 11000000 {
+		ctx.SetStatusCode(404)
+		return
+	}
 	body := ctx.PostBody()
 	if len(body) == 0 || bytes.Contains(body, NULL) {
 		ctx.SetStatusCode(400)
@@ -204,6 +228,10 @@ func visits_update(ctx *fasthttp.RequestCtx, id int) {
 func users_visits(ctx *fasthttp.RequestCtx, id int) {
 	var err interface{}
 
+	if id > 1100000 {
+		ctx.SetStatusCode(404)
+		return
+	}
 	rec := users[id]
 	if rec.Id == 0 {
 		ctx.SetStatusCode(404)
@@ -233,7 +261,7 @@ func users_visits(ctx *fasthttp.RequestCtx, id int) {
 	}
 
 	result := ShortVisits{}
-	for _, vid := range visits_by_user[id] {
+	for vid, _ := range visits_by_user[id] {
 		v := visits[vid]
 		if hasFromDate && v.VisitedAt <= fromDateValue {
 			continue
@@ -257,6 +285,10 @@ func users_visits(ctx *fasthttp.RequestCtx, id int) {
 
 func locations_avg(ctx *fasthttp.RequestCtx, id int) {
 	var err interface{}
+	if id > 1100000 {
+		ctx.SetStatusCode(404)
+		return
+	}
 	rec := locations[id]
 	if rec.Id == 0 {
 		ctx.SetStatusCode(404)
@@ -298,7 +330,7 @@ func locations_avg(ctx *fasthttp.RequestCtx, id int) {
 
 	avgCount := 0
 	avgSum := 0
-	for _, vid := range visits_by_location[id] {
+	for vid, _ := range visits_by_location[id] {
 		v := visits[vid]
 		if hasFromDate && v.VisitedAt <= fromDateValue {
 			continue
