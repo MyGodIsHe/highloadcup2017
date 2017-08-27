@@ -1,6 +1,5 @@
 package main
 
-
 var OK = []byte("{}\n")
 var NULL = []byte(": null")
 

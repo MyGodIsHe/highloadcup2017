@@ -94,7 +94,6 @@ func users_update(ctx *fasthttp.RequestCtx, id int) {
 			ctx.SetStatusCode(400)
 			return
 		}
-
 		delete(users_emails, old_email)
 		users_emails[rec.Email] = true
 	}
@@ -251,6 +250,7 @@ func users_visits(ctx *fasthttp.RequestCtx, id int) {
 	}
 
 	country := string(ctx.URI().QueryArgs().Peek("country"))
+	hasCountry := country != ""
 	var l Location
 
 	ctx.URI().QueryArgs().GetUintOrZero("toDistance")
@@ -270,7 +270,7 @@ func users_visits(ctx *fasthttp.RequestCtx, id int) {
 			continue
 		}
 		l = locations[v.Location]
-		if country != "" && l.Country != country {
+		if hasCountry && l.Country != country {
 			continue
 		}
 		if hasToDistance && l.Distance >= toDistanceValue {
@@ -280,7 +280,6 @@ func users_visits(ctx *fasthttp.RequestCtx, id int) {
 	}
 	sort.Sort(result)
 	WriteShortVisits(ctx, result)
-	//json.NewEncoder(ctx).Encode(DataShortVisit{Visits: result})
 }
 
 func locations_avg(ctx *fasthttp.RequestCtx, id int) {
@@ -321,7 +320,8 @@ func locations_avg(ctx *fasthttp.RequestCtx, id int) {
 	}
 
 	gender := string(ctx.URI().QueryArgs().Peek("gender"))
-	if gender != "" && gender != "f" && gender != "m" {
+	hasGender := gender != ""
+	if hasGender && gender != "f" && gender != "m" {
 		ctx.SetStatusCode(400)
 		return
 	}
@@ -339,7 +339,7 @@ func locations_avg(ctx *fasthttp.RequestCtx, id int) {
 			continue
 		}
 		u := users[v.User]
-		if gender != "" && u.Gender != gender {
+		if hasGender && u.Gender != gender {
 			continue
 		}
 		age := diff(time.Unix(int64(u.BirthDate), 0).UTC(), now)
