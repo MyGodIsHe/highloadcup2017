@@ -427,7 +427,7 @@ func RouterHandler(ctx *fasthttp.RequestCtx) {
 
 func main() {
 	loadData("/tmp/data/data.zip")
-	fmt.Println("Good luck ^-^")
+	fmt.Println("Good luck ^-^\"")
 
 	server := fasthttp.Server{
 		Handler: RouterHandler,
